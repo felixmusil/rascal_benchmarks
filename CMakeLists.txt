@@ -60,4 +60,5 @@ include(rascal)
 
 message(STATUS "rascal: ${LIBRASCAL_NAME}")
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/scripts)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src)
 
