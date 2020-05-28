@@ -1,0 +1,54 @@
+GAP training data and scripts for the bulk methane SOAP potential
+=================================================================
+
+Training data and documentation coyright © 2018 Max Veit.
+This work is licensed under a Creative Commons Attribution-ShareAlike 4.0
+International License (http://creativecommons.org/licenses/by-sa/4.0/).
+
+
+Manifest
+--------
+
+    README (this file)
+
+Atomic configuration files with PBE, PBE0, and MBD data:
+    mebox-minimal-pbe0-b1b.xyz
+    mebox-minimal-pbe0-pbeotf-mbdint.xyz
+    mebox-minimal-pbe-b1b.xyz
+    mebox-minimal-pbe-mbdint.xyz
+
+Atomic configurations and data for the two out-of-sample sets:
+    mebox-minimal-oos-T110-pbe0-b1b.xyz
+    mebox-minimal-oos-T110-pbe0-mbdint.xyz
+    mebox-minimal-oos-T110-pbe-b1b.xyz
+    mebox-minimal-oos-T110-pbe-mbdint.xyz
+    mebox-minimal-oos-T188-pbe0-b1b.xyz
+    mebox-minimal-oos-T188-pbe0-mbdint.xyz
+    mebox-minimal-oos-T188-pbe-b1b.xyz
+    mebox-minimal-oos-T188-pbe-mbdint.xyz
+
+Fitting scripts:
+    fit_soap_box.sh
+    fit_mbd_soap.sh
+
+Fitting companion data:
+    dispts_quip_params.xml
+
+
+Fitting a GAP model
+-------------------
+
+Please see the two shell scripts for examples on how to fit a GAP to the given
+training data.  Use `fit_soap_box.sh` for the PBE and PBE0 GAPs (and the
+corresponding data files, ending in `pbe-b1b.xyz` or `pbe0-b1b.xyz`).  Use
+`fit_mbd_soap.sh` for the MBD(PBE) and MBD(PBE0) GAPs (and the corresponding
+data files, ending in `mbdint.xyz`).  The scripts use QUIP to fit the GAP
+models; see https://github.com/libAtoms/QUIP for installation instructions or
+https://hub.docker.com/r/libatomsquip/quip/ for a precompiled version.
+
+
+Evaluating and running a GAP model
+----------------------------------
+
+Please see the companion dataset with several examples of pre-fit GAPs and
+instructions for using them.
