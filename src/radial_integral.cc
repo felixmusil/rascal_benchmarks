@@ -27,10 +27,13 @@
 #include "rascal/structure_managers/structure_manager_centers.hh"
 #include "rascal/structure_managers/structure_manager_collection.hh"
 
+#include "utils.hh"
+
 #include <cmath>
 #include <functional>
 #include <initializer_list>
 #include <iostream>
+#include <iomanip>
 #include <list>
 #include <random>
 #include <string>
@@ -57,15 +60,6 @@ using PropGrad_t = typename Representation_t::template PropertyGradient_t<Manage
 constexpr static size_t ClusterLayer_{
           Manager_t::template cluster_layer_from_order<2>()};
 
-template <internal::RadialBasisType RBT, internal::AtomicSmearingType AST,
-            internal::OptimizationType OT>
-auto downcast_radial_integral_handler(
-    const std::shared_ptr<internal::RadialContributionBase> &
-        radial_integral) {
-  return std::static_pointer_cast<
-      internal::RadialContributionHandler<RBT, AST, OT>>(radial_integral);
-}
-
 struct RadialIntegral {
   internal::AtomicSmearingType atomic_smearing_type{};
   std::shared_ptr<internal::RadialContributionBase> radial_integral{};
@@ -75,7 +69,7 @@ struct RadialIntegral {
   size_t max_radial{0};
   size_t max_angular{0};
 
-  explicit RadialIntegral(const json & hyper) {
+  explicit RadialIntegral(const json & hypers) {
       using internal::AtomicSmearingType;
       using internal::OptimizationType;
       using internal::RadialBasisType;
@@ -264,7 +258,7 @@ struct RadialIntegral {
       }
     }
   }
-}
+};
 
 int main(int argc, char * argv[]) {
   if (argc < 3) {
@@ -286,28 +280,26 @@ int main(int argc, char * argv[]) {
   json adaptors = input["adaptors"].get<json>();
   json calculator = input["calculator"].get<json>();
 
-  Representation_t representation{calculator};
+  // Representation_t representation{calculator};
 
   std::cout << "Config filename: " << filename << std::endl;
 
-  std::chrono::duration<double> elapsed{};
+  math::Vector_t elapsed{N_ITERATIONS};
 
   // compute NL
   ManagerCollection_t managers{adaptors};
   managers.add_structures(filename, 0, input["n_structures"].get<int>());
 
-  std::shared_ptr<internal::RadialContributionBase> radial_integral{};
-
-  RadialIntegral radial_integral{hypers};
-  auto start = std::chrono::high_resolution_clock::now();
+  RadialIntegral radial_integral{calculator};
+  Timer timer{};
   // This is the part that should get profiled
   for (int looper{0}; looper < N_ITERATIONS; looper++) {
+    timer.reset();
     for (auto manager : managers) {
       radial_integral.compute(manager);
     }
+    elapsed[looper] = timer.elapsed();
   }
-  auto finish = std::chrono::high_resolution_clock::now();
-
   std::vector<std::vector<size_t>> n_neighbors{};
   for (auto manager : managers) {
     n_neighbors.emplace_back();
@@ -319,9 +311,11 @@ int main(int argc, char * argv[]) {
       n_neighbors.back().emplace_back(n_neighbors_center);
     }
   }
-
+  std::cout << elapsed.mean() << ", "<<std_dev(elapsed) << std::endl;
   json results{{
-    {"elapsed", elapsed.count() / N_ITERATIONS},
+    {"elapsed_mean", elapsed.mean()},
+    {"elapsed_std", std_dev(elapsed)},
+    {"unit", "seconds"},
     {"n_neighbors", n_neighbors}
   }};
 
