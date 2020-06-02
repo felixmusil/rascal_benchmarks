@@ -1,4 +1,5 @@
 {
+  {
   "calculator" : {
     "max_radial": 8, "max_angular": 6, "soap_type": "PowerSpectrum", "normalize": true,
     "expansion_by_species_method": "structure wise", "compute_gradients": false,
