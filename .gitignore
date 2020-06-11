@@ -6,9 +6,12 @@ results/*
 # C extensions
 *.so
 
+*workspace
+.idea/
+.vscode/
 # Distribution / packaging
 .Python
-build/
+build*/
 develop-eggs/
 dist/
 downloads/

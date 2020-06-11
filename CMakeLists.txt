@@ -25,8 +25,6 @@ message(STATUS "Build type is: ${CMAKE_BUILD_TYPE}")
 project(rascal_benchmark CXX)
 
 
-
-
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -57,8 +55,8 @@ endif()
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 include(rascal)
 
+set_target_properties(_rascal PROPERTIES BUILD_RPATH_USE_ORIGIN FALSE)
 
 message(STATUS "rascal: ${LIBRASCAL_NAME}")
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/scripts)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src)
 

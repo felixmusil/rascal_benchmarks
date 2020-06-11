@@ -39,7 +39,6 @@
 #include <string>
 #include <algorithm>
 #include <iterator>
-#include <chrono>
 
 
 
@@ -273,14 +272,12 @@ int main(int argc, char * argv[]) {
   timings["fn_output"] = argv[2];
 
   json input = json_io::load(argv[1]);
-  timings["input"] = input;
 
   std::string filename{input["filename"].get<std::string>()};
   const int N_ITERATIONS = input["N_ITERATIONS"].get<int>();
+  const int n_structures = input["n_structures"].get<int>();
   json adaptors = input["adaptors"].get<json>();
   json calculator = input["calculator"].get<json>();
-
-  // Representation_t representation{calculator};
 
   std::cout << "Config filename: " << filename << std::endl;
 
@@ -288,8 +285,7 @@ int main(int argc, char * argv[]) {
 
   // compute NL
   ManagerCollection_t managers{adaptors};
-  managers.add_structures(filename, 0, input["n_structures"].get<int>());
-
+  managers.add_structures(filename, 0, n_structures);
   RadialIntegral radial_integral{calculator};
   Timer timer{};
   // This is the part that should get profiled
@@ -300,24 +296,31 @@ int main(int argc, char * argv[]) {
     }
     elapsed[looper] = timer.elapsed();
   }
-  std::vector<std::vector<size_t>> n_neighbors{};
+  // std::vector<std::vector<size_t>> n_neighbors{};
+  // for (auto manager : managers) {
+  //   n_neighbors.emplace_back();
+  //   for (auto center : manager) {
+  //     size_t n_neighbors_center{0};
+  //     for (auto neigh : center.pairs()) {
+  //       n_neighbors_center++;
+  //     }
+  //     n_neighbors.back().emplace_back(n_neighbors_center);
+  //   }
+  // }
+  size_t n_neighbors{};
   for (auto manager : managers) {
-    n_neighbors.emplace_back();
     for (auto center : manager) {
-      size_t n_neighbors_center{0};
       for (auto neigh : center.pairs()) {
-        n_neighbors_center++;
+        n_neighbors++;
       }
-      n_neighbors.back().emplace_back(n_neighbors_center);
     }
   }
   std::cout << elapsed.mean() << ", "<<std_dev(elapsed) << std::endl;
-  json results{{
-    {"elapsed_mean", elapsed.mean()},
-    {"elapsed_std", std_dev(elapsed)},
-    {"unit", "seconds"},
-    {"n_neighbors", n_neighbors}
-  }};
+  json results{};
+  results["elapsed_mean"] = elapsed.mean();
+  results["elapsed_std"] = std_dev(elapsed);
+  results["time_unit"] = "seconds";
+  results["n_neighbors"] = n_neighbors;
 
   timings["results"] = results;
 

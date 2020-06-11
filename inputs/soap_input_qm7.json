@@ -1,5 +1,4 @@
 {
-  {
   "calculator" : {
     "max_radial": 8, "max_angular": 6, "soap_type": "PowerSpectrum", "normalize": true,
     "expansion_by_species_method": "structure wise", "compute_gradients": false,
@@ -19,7 +18,7 @@
     {"initialization_arguments": {"cutoff": 5}, "name": "strict"}
   ],
   "kernel" : {"zeta": 2, "target_type": "Atom", "name": "GAP"},
-  "filename": "../structures/qm7-50.json",
+  "filename": "../structures/qm9.json",
   "N_ITERATIONS" : 100,
   "n_structures" : 50,
   "h" : 1e-4,
