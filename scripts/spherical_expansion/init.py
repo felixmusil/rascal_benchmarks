@@ -8,23 +8,15 @@ from os.path import join,dirname
 sys.path.insert(0, join(dirname(__file__), '../'))
 from representation_params import REPRESENTATION_PARAMS
 
-project = signac.init_project('spherical_harmonics')
+project = signac.init_project('spherical_expansion')
 
 fixed_params = [
-    'max_radial','normalize','radial_basis',
-    'optimization_args','expansion_by_species_method',
-    'gaussian_sigma_constant','coefficient_subselection',
-    'cutoff_smooth_width','gaussian_sigma_type','soap_type','global_species',
-    'inversion_symmetry','cutoff_function_parameters','cutoff_function_type',
+    'normalize',
+    'coefficient_subselection',
+    'inversion_symmetry',
+    'soap_type',
 ]
-del_params = [
-    'normalize','radial_basis',
-    'optimization_args','expansion_by_species_method',
-    'gaussian_sigma_constant','coefficient_subselection',
-    'soap_type','global_species',
-    'inversion_symmetry','cutoff_function_parameters','cutoff_function_type',
-]
-
+del_params = fixed_params
 fixed_params = {k:REPRESENTATION_PARAMS[0]['representation'][k] for k in fixed_params}
 
 for REPRESENTATION_PARAM in REPRESENTATION_PARAMS:

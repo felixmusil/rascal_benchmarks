@@ -37,7 +37,7 @@ def sph_cpp_computed(job):
 def compute_sph_cpp(job):
     # setup input for the script
     data = job.statepoint()
-    rep = SphericalInvariants(**data['representation'])
+    rep = SphericalExpansion(**data['representation'])
     data['calculator'] = rep.hypers
     cutoff = rep.hypers['cutoff_function']['cutoff']['value']
     data['adaptors'] = [

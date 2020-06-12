@@ -9,10 +9,10 @@
  *
  */
 
+
 #include "rascal/utils/basic_types.hh"
 #include "rascal/utils/utils.hh"
 #include "rascal/representations/calculator_sorted_coulomb.hh"
-#include "rascal/representations/calculator_spherical_expansion.hh"
 #include "rascal/representations/calculator_spherical_invariants.hh"
 #include "rascal/structure_managers/adaptor_center_contribution.hh"
 #include "rascal/structure_managers/adaptor_half_neighbour_list.hh"
@@ -47,41 +47,9 @@ using Manager_t = typename ManagerTypeHolder_t::type;
 using Representation_t = CalculatorSphericalInvariants;
 using ManagerCollection_t =
     typename TypeHolderInjector<ManagerCollection, ManagerTypeHolder_t::type_list>::type;
-using Representation_t = CalculatorSphericalInvariants;
 using Prop_t = typename Representation_t::template Property_t<Manager_t>;
 using PropGrad_t = typename Representation_t::template PropertyGradient_t<Manager_t>;
 
-constexpr static size_t ClusterLayer_{
-          Manager_t::template cluster_layer_from_order<2>()};
-
-struct SPH {
-  size_t max_angular{0};
-  bool compute_gradients{false};
-  math::SphericalHarmonics spherical_harmonics{};
-
-  explicit SPH(const json & hypers) {
-      this->max_angular = hypers.at("max_angular").get<size_t>();
-      this->compute_gradients = hypers.at("compute_gradients").get<bool>();
-      this->spherical_harmonics.precompute(this->max_angular,
-                                           this->compute_gradients);
-  }
-
-  template <class StructureManager>
-  void compute(StructureManager & manager) {
-    auto coefs_sph = math::Vector_t((this->max_angular + 1)*(this->max_angular + 1));
-    auto coefs_sph_der = math::Matrix_t(3, (this->max_angular + 1)*(this->max_angular + 1));
-
-    for (auto center : manager) {
-      for (auto neigh : center.pairs()) {
-        const math::Vector_Ref direction{manager->get_direction_vector(neigh)};
-        this->spherical_harmonics.calc(direction);
-        coefs_sph = spherical_harmonics.get_harmonics();
-        coefs_sph_der =
-            spherical_harmonics.get_harmonics_derivatives();
-      }
-    }
-  }
-};
 
 int main(int argc, char * argv[]) {
   if (argc < 3) {
@@ -106,17 +74,17 @@ int main(int argc, char * argv[]) {
   std::cout << "Config filename: " << filename << std::endl;
 
   math::Vector_t elapsed{N_ITERATIONS};
+  Timer timer{};
 
   // compute NL
   ManagerCollection_t managers{adaptors};
   managers.add_structures(filename, 0, n_structures);
-  SPH spherical_harmonics{calculator};
-  Timer timer{};
+  Representation_t spherical_invariants{calculator};
   // This is the part that should get profiled
   for (int looper{0}; looper < N_ITERATIONS; looper++) {
     timer.reset();
     for (auto manager : managers) {
-      spherical_harmonics.compute(manager);
+      spherical_invariants.compute(manager);
     }
     elapsed[looper] = timer.elapsed();
   }
@@ -129,6 +97,7 @@ int main(int argc, char * argv[]) {
       }
     }
   }
+
   std::cout << elapsed.mean() << ", "<<std_dev(elapsed) << std::endl;
   json results{};
   results["elapsed_mean"] = elapsed.mean();
