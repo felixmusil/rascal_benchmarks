@@ -19,7 +19,7 @@ misc_entries = {
 # spherical expansion params
 ns = range(2,16,2)
 ls = range(1,16,2)
-grads = [False]
+grads = [False, True]
 rcs = [2,3,4,5]
 gaussian_sigmas = [0.3]
 normalize = [False, True]
