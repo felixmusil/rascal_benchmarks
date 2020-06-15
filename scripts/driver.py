@@ -19,6 +19,8 @@ if __name__ == '__main__':
                         help='init all signac project subfolders')
     parser.add_argument('--run', action='store_true',
                         help='run all signac project subfolders')
+    parser.add_argument('--status', action='store_true',
+                        help='get status from all signac project subfolders')
     parser.add_argument('--prune', action='store_true',
                         help="remove state points that don't have a document")
     parser.add_argument('-np','--parallel', type=int, default=-1,
@@ -57,4 +59,12 @@ if __name__ == '__main__':
             print('    ',os.path.dirname(path))
             move = ['cd',os.path.dirname(path),'&&']
             command = ' '.join(move+['python', os.path.abspath(path), 'run', parallel, '--progress']+back2root)
+            run(command ,shell=True)
+
+    if args.status:
+        print('Run all project')
+        for path in Path('./').rglob('project.py'):
+            print('    ',os.path.dirname(path))
+            move = ['cd',os.path.dirname(path),'&&']
+            command = ' '.join(move+['python', os.path.abspath(path), 'status']+back2root)
             run(command ,shell=True)
