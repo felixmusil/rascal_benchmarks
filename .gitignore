@@ -9,6 +9,7 @@ results/*
 *workspace
 .idea/
 .vscode/
+.DS_Store
 # Distribution / packaging
 .Python
 build*/
