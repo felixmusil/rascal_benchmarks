@@ -78,11 +78,13 @@ for (fn, n, l, grad, rc, gaussian_sigma, norm, soap_type, rb,
     if rb not in ['GTO', 'DVR']:
         kargs = deepcopy(radial_basis_args[rb])
         for accuracy in accuracies:
-            kargs['optimization_args']['accuracy'] = accuracy
-            kargs['optimization_args']['range'][1] = rc
-            sp['representation'].update(**kargs)
-            sp.update(misc_entries[fn])
-            REPRESENTATION_PARAMS.append(sp)
+            sp_ = deepcopy(sp)
+            kargs_ = deepcopy(kargs)
+            kargs_['optimization_args']['accuracy'] = accuracy
+            kargs_['optimization_args']['range'][1] = rc
+            sp_['representation'].update(**kargs_)
+            sp_.update(misc_entries[fn])
+            REPRESENTATION_PARAMS.append(sp_)
     else:
         kargs = deepcopy(radial_basis_args[rb])
         sp['representation'].update(**kargs)
