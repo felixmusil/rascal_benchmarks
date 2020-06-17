@@ -46,6 +46,7 @@ def compute_sph_cpp(job):
     max_mem = memory_usage(p, interval=0.001, max_usage=True)
     # look at timings
     p = Popen([group['executable'], job.fn(group['fn_in']), job.fn(group['fn_out'])], stdout=PIPE, stderr=PIPE)
+    if p.stderr.read(): print(p.stderr.read())
     data = fromjson(job.fn(group['fn_out']))
     data = data['results']
     data['mem_max'] = max_mem
