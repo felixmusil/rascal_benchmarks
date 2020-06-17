@@ -27,7 +27,10 @@ fixed_params = {k:REPRESENTATION_PARAMS[0]['representation'][k] for k in fixed_p
 
 for REPRESENTATION_PARAM in REPRESENTATION_PARAMS:
     if REPRESENTATION_PARAM['nl_type'] != 'Full':
-        pass
+        continue
+    if REPRESENTATION_PARAM['name'] != 'qm9':
+        continue
+    
     if np.all([REPRESENTATION_PARAM['representation'][k] == v for k,v in fixed_params.items()]):
         rep_args = deepcopy(REPRESENTATION_PARAM)
         rep_args['N_ITERATIONS'] = 50
