@@ -10,15 +10,15 @@ from representation_params import REPRESENTATION_PARAMS
 
 project = signac.init_project('spherical_expansion')
 
-fixed_params = [
-    'normalize',
-    'coefficient_subselection',
-    'inversion_symmetry',
-    'soap_type',
-]
+fixed_params = {
+    'normalize':False,
+    'coefficient_subselection':None,
+    'inversion_symmetry':True,
+    'soap_type':'PowerSpectrum',
+}
 del_params = fixed_params
-fixed_params = {k:REPRESENTATION_PARAMS[0]['representation'][k] for k in fixed_params}
-fixed_accuracy = 1e-10
+# fixed_params = {k:REPRESENTATION_PARAMS[0]['representation'][k] for k in fixed_params}
+fixed_accuracy = 1e-8
 
 
 for REPRESENTATION_PARAM in REPRESENTATION_PARAMS:

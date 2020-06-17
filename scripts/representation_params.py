@@ -9,7 +9,7 @@ BUILD_PATH = '../../build'
 # Define parameter space
 fns = {
     'qm9': 'qm9.json',
-    'molecular_crystals': 'molecular_crystals.json',
+    'molecular_crystals': 'molecular_crystals_50.json',
     'silicon_bulk': 'silicon_bulk.json',
     'methane_liquid': 'methane_liquid.json',
     'methane_sulfonic': 'methane_sulfonic.ubjson'
@@ -53,7 +53,8 @@ normalize = [False, True]
 soap_types = ['PowerSpectrum']
 radial_basis = ['GTO','DVR','GTO_Spline','DVR_Spline']
 expansion_by_species_method = ['structure wise']
-feature_sparsification_fractions = [None]
+feature_sparsification_fractions = [None,0.01,0.05,0.1,0.2,0.3,0.4,0.5,0.6]
+seed = 10
 
 radial_basis_args = {
     'GTO' : {'radial_basis': 'GTO', 'optimization_args': {}},
@@ -123,10 +124,11 @@ for ((name, fn), n, l, grad, rc, gaussian_sigma, norm, soap_type, rb,
             cutoff_function_parameters=dict(),
             cutoff_function_type="ShiftedCosine",
             gaussian_sigma_constant=gaussian_sigma,
-            coefficient_subselection=feature_sparsification_fraction
+            coefficient_subselection=feature_sparsification_fraction,
         ),
         'nl_type' : nl_type,
         'adaptors' : adaptors,
+        'seed':seed,
     }
     if rb not in ['GTO', 'DVR']:
         kargs = deepcopy(radial_basis_args[rb])
