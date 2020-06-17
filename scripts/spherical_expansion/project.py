@@ -20,7 +20,10 @@ groups = {
         'fn_out' : 'out_se_cpp.json',
         'fn_res' : 'res_se_cpp.json',
         'fn_in' : 'in_se_cpp.json',
-        'executable' : join(BUILD_PATH,'src/spherical_expansion'),
+        'executable' : {
+            'Full':join(BUILD_PATH,'src/spherical_expansion'),
+            'Half':join(BUILD_PATH,'src/spherical_expansion_half'),
+            },
     },
 }
 
@@ -37,16 +40,11 @@ def compute_se_cpp(job):
     data = job.statepoint()
     rep = SphericalExpansion(**data['representation'])
     data['calculator'] = rep.hypers
-    cutoff = rep.hypers['cutoff_function']['cutoff']['value']
-    data['adaptors'] = [
-        {"initialization_arguments": {"cutoff": cutoff}, "name":   "neighbourlist"},
-        {"initialization_arguments": {}, "name": "centercontribution"},
-        {"initialization_arguments": {"cutoff": cutoff}, "name": "strict"}
-    ]
+
     tojson(job.fn(group['fn_in']), data)
     # look at memory footprint
-    p = Popen([group['executable'], job.fn(group['fn_in']), job.fn(group['fn_out'])], stdout=PIPE, stderr=PIPE)
-    max_mem = memory_usage(p, interval=0.001, max_usage=True)
+    p = Popen([group['executable'][data['nl_type']], job.fn(group['fn_in']), job.fn(group['fn_out'])], stdout=PIPE, stderr=PIPE)
+    max_mem = memory_usage(p, interval=0.1, max_usage=True)
     # look at timings
     p = Popen([group['executable'], job.fn(group['fn_in']), job.fn(group['fn_out'])], stdout=PIPE, stderr=PIPE)
     data = fromjson(job.fn(group['fn_out']))

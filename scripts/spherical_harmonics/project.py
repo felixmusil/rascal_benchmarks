@@ -39,12 +39,7 @@ def compute_sph_cpp(job):
     data = job.statepoint()
     rep = SphericalExpansion(**data['representation'])
     data['calculator'] = rep.hypers
-    cutoff = rep.hypers['cutoff_function']['cutoff']['value']
-    data['adaptors'] = [
-        {"initialization_arguments": {"cutoff": cutoff}, "name":   "neighbourlist"},
-        {"initialization_arguments": {}, "name": "centercontribution"},
-        {"initialization_arguments": {"cutoff": cutoff}, "name": "strict"}
-    ]
+
     tojson(job.fn(group['fn_in']), data)
     # look at memory footprint
     p = Popen([group['executable'], job.fn(group['fn_in']), job.fn(group['fn_out'])], stdout=PIPE, stderr=PIPE)
