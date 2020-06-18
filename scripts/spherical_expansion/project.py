@@ -46,7 +46,7 @@ def compute_se_cpp(job):
     p = Popen([group['executable'][data['nl_type']], job.fn(group['fn_in']), job.fn(group['fn_out'])], stdout=PIPE, stderr=PIPE)
     max_mem = memory_usage(p, interval=0.1, max_usage=True)
     # look at timings
-    p = Popen([group['executable'], job.fn(group['fn_in']), job.fn(group['fn_out'])], stdout=PIPE, stderr=PIPE)
+    p = Popen([group['executable'][data['nl_type']], job.fn(group['fn_in']), job.fn(group['fn_out'])], stdout=PIPE, stderr=PIPE)
     if p.stderr.read(): print(p.stderr.read())
     data = fromjson(job.fn(group['fn_out']))
     data = data['results']

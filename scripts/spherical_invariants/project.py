@@ -78,7 +78,7 @@ def compute_si_cpp(job):
     data['calculator'] = rep.hypers
     tojson(job.fn(group['fn_in']), data)
     # look at memory footprint
-    p = Popen([group['executable'], job.fn(group['fn_in']), job.fn(group['fn_out'])], stdout=PIPE, stderr=PIPE)
+    p = Popen([group['executable'][data['nl_type']], job.fn(group['fn_in']), job.fn(group['fn_out'])], stdout=PIPE, stderr=PIPE)
     max_mem = memory_usage(p, interval=0.1, max_usage=True)
     # look at timings
     p = Popen([group['executable'][data['nl_type']], job.fn(group['fn_in']), job.fn(group['fn_out'])], stdout=PIPE, stderr=PIPE)
