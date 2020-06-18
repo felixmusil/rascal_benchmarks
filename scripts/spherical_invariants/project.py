@@ -70,10 +70,15 @@ def compute_si_cpp(job):
     # setup input for the script
     data = job.statepoint()
     np.random.seed(data['seed'])
-    rep = SphericalInvariants(**data['representation'])
-    n_feat = None
+
     if data['representation']['coefficient_subselection'] is not None:
+        rpr = deepcopy(data['representation'])
+        rpr.pop('coefficient_subselection')
+        rep = SphericalInvariants(**rpr)
         rep,n_feat = get_randomly_sparsified_soap(data, rep)
+    else:
+        n_feat = None
+        rep = SphericalInvariants(**data['representation'])
 
     data['calculator'] = rep.hypers
     tojson(job.fn(group['fn_in']), data)
