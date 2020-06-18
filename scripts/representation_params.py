@@ -24,7 +24,7 @@ misc_entries = {
     'molecular_crystals' : {
         "N_ITERATIONS" : 20,
         'start_structure': 0,
-        "n_structures" : 50,
+        "n_structures" : 30,
     },
     'silicon_bulk' : {
         "N_ITERATIONS" : 20,
