@@ -270,6 +270,7 @@ int main(int argc, char * argv[]) {
   std::string filename{input["filename"].get<std::string>()};
   const int N_ITERATIONS = input["N_ITERATIONS"].get<int>();
   const int n_structures = input["n_structures"].get<int>();
+  const int start_structure = input["start_structure"].get<int>();
   json adaptors = input["adaptors"].get<json>();
   json calculator = input["calculator"].get<json>();
 
@@ -279,7 +280,7 @@ int main(int argc, char * argv[]) {
 
   // compute NL
   ManagerCollection_t managers{adaptors};
-  managers.add_structures(filename, 0, n_structures);
+  managers.add_structures(filename, start_structure, n_structures);
   RadialIntegral radial_integral{calculator};
   Timer timer{};
   // This is the part that should get profiled
@@ -290,20 +291,11 @@ int main(int argc, char * argv[]) {
     }
     elapsed[looper] = timer.elapsed();
   }
-  // std::vector<std::vector<size_t>> n_neighbors{};
-  // for (auto manager : managers) {
-  //   n_neighbors.emplace_back();
-  //   for (auto center : manager) {
-  //     size_t n_neighbors_center{0};
-  //     for (auto neigh : center.pairs()) {
-  //       n_neighbors_center++;
-  //     }
-  //     n_neighbors.back().emplace_back(n_neighbors_center);
-  //   }
-  // }
-  size_t n_neighbors{};
+
+  size_t n_neighbors{0}, n_centers{0};
   for (auto manager : managers) {
     for (auto center : manager) {
+      n_centers++;
       for (auto neigh : center.pairs()) {
         n_neighbors++;
       }
@@ -315,6 +307,7 @@ int main(int argc, char * argv[]) {
   results["elapsed_std"] = std_dev(elapsed);
   results["time_unit"] = "seconds";
   results["n_neighbors"] = n_neighbors;
+  results["n_centers"] = n_centers;
 
   timings["results"] = results;
 
