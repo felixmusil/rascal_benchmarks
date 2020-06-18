@@ -55,7 +55,7 @@ def get_randomly_sparsified_soap(data, rep):
     for idx in ids[:n_feat]:
         feat = feature_mapping[idx]
         for k,v in feat.items():
-            sel_feat[k].append(v)
+            sel_feat[k].append(int(v))
     rep_hypers['coefficient_subselection'] = sel_feat
     soap = SphericalInvariants(**rep_hypers)
     return soap,n_feat
