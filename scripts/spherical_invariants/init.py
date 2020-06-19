@@ -15,6 +15,35 @@ del_params = fixed_params
 fixed_params = {k:REPRESENTATION_PARAMS[0]['representation'][k] for k in fixed_params}
 fixed_accuracy = 1e-8
 
+misc_entries = {
+    'qm9' : {
+        "N_ITERATIONS" : 3,
+        "n_structures" : 250,
+        'start_structure': 0,
+    },
+    'molecular_crystals' : {
+        "N_ITERATIONS" : 3,
+        'start_structure': 0,
+        "n_structures" : 15,
+    },
+    'silicon_bulk' : {
+        "N_ITERATIONS" : 3,
+        'start_structure': 600,
+        "n_structures" : 50,
+    },
+    'methane_liquid' : {
+        "N_ITERATIONS" : 3,
+        'start_structure': 100,
+        "n_structures" : 25,
+    },
+    'methane_sulfonic' : {
+        "N_ITERATIONS" : 3,
+        'start_structure': 0,
+        "n_structures" : 75,
+    },
+}
+
+
 for REPRESENTATION_PARAM in REPRESENTATION_PARAMS:
     if np.all([REPRESENTATION_PARAM['representation'][k] == v for k,v in fixed_params.items()]):
         rpr = REPRESENTATION_PARAM['representation']
@@ -31,6 +60,8 @@ for REPRESENTATION_PARAM in REPRESENTATION_PARAMS:
                 continue
 
         rep_args = deepcopy(REPRESENTATION_PARAM)
+
+        rep_args.update(**misc_entries[rep_args['name']])
         rep_args['representation'] = {
             k:v for k,v in rep_args['representation'].items() if k not in del_params}
         job = project.open_job(rep_args)
