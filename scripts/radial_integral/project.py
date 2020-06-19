@@ -8,7 +8,7 @@ from memory_profiler import memory_usage
 import sys, os
 
 sys.path.insert(0, join(dirname(__file__), '../'))
-from representation_params import STRUCTURE_PATH, RASCAL_BUILD_PATH, BUILD_PATH
+from path import STRUCTURE_PATH, RASCAL_BUILD_PATH, BUILD_PATH
 from utils.io import tojson, fromjson
 sys.path.insert(0, RASCAL_BUILD_PATH)
 from rascal.representations import SphericalInvariants, SphericalExpansion

@@ -1,8 +1,5 @@
 import sys
 import os
-sys.path.insert(0, '../build/')
-from ase.io import read
-import numpy as np
 import argparse
 from subprocess import Popen, PIPE, run
 from pathlib import Path

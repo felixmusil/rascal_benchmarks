@@ -1,10 +1,7 @@
 from os.path import join, abspath
 from itertools import product
 from copy import deepcopy
-
-STRUCTURE_PATH = '../../structures'
-RASCAL_BUILD_PATH = '../../build/_deps/rascal-build'
-BUILD_PATH = '../../build'
+from path import STRUCTURE_PATH, RASCAL_BUILD_PATH, BUILD_PATH
 
 # Define parameter space
 fns = {
@@ -12,7 +9,7 @@ fns = {
     'molecular_crystals': 'molecular_crystals_50.json',
     'silicon_bulk': 'silicon_bulk.json',
     'methane_liquid': 'methane_liquid.json',
-    'methane_sulfonic': 'methane_sulfonic.ubjson'
+    'methane_sulfonic': 'methane_sulfonic_150.json'
 }
 
 misc_entries = {
