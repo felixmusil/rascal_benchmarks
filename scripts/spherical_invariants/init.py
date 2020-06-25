@@ -17,29 +17,29 @@ fixed_accuracy = 1e-8
 
 misc_entries = {
     'qm9' : {
-        "N_ITERATIONS" : 3,
-        "n_structures" : 250,
+        "N_ITERATIONS" : 5,
+        "n_structures" : 300,
         'start_structure': 0,
     },
     'molecular_crystals' : {
-        "N_ITERATIONS" : 3,
+        "N_ITERATIONS" : 5,
         'start_structure': 0,
-        "n_structures" : 15,
+        "n_structures" : 20,
     },
     'silicon_bulk' : {
-        "N_ITERATIONS" : 3,
+        "N_ITERATIONS" : 5,
         'start_structure': 600,
-        "n_structures" : 50,
+        "n_structures" : 60,
     },
     'methane_liquid' : {
-        "N_ITERATIONS" : 3,
+        "N_ITERATIONS" : 5,
         'start_structure': 100,
-        "n_structures" : 25,
+        "n_structures" : 35,
     },
     'methane_sulfonic' : {
-        "N_ITERATIONS" : 3,
+        "N_ITERATIONS" : 5,
         'start_structure': 0,
-        "n_structures" : 75,
+        "n_structures" : 85,
     },
 }
 

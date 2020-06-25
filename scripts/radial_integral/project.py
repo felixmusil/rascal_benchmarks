@@ -30,6 +30,21 @@ group = groups['radial_integral_cpp']
 def ri_cpp_computed(job):
     return job.isfile(group['fn_out']) and job.isfile(group['fn_res'])
 
+def run(job, N_ITERATION, max_mem):
+    data = job.statepoint()
+    data['N_ITERATIONS'] = N_ITERATION
+    tojson(job.fn(group['fn_in']), data)
+    p = Popen([group['executable'], job.fn(group['fn_in']), job.fn(group['fn_out'])], stdout=PIPE, stderr=PIPE)
+    # if p.stderr.read(): print(p.stderr.read())
+    data = fromjson(job.fn(group['fn_out']))
+    data = data['results']
+    data['mem_max'] = max_mem
+    data['mem_unit'] = 'MiB'
+    tojson(job.fn(group['fn_res']), data)
+    # job.document.elapsed_mean < 3*job.document.elapsed_std
+    return data['elapsed_mean'] > 4*data['elapsed_std']
+
+
 @FlowProject.operation
 @FlowProject.post(ri_cpp_computed)
 def compute_ri_cpp(job):
@@ -43,13 +58,12 @@ def compute_ri_cpp(job):
     p = Popen([group['executable'], job.fn(group['fn_in']), job.fn(group['fn_out'])], stdout=PIPE, stderr=PIPE)
     max_mem = memory_usage(p, interval=0.001, max_usage=True)
     # look at timings
-    p = Popen([group['executable'], job.fn(group['fn_in']), job.fn(group['fn_out'])], stdout=PIPE, stderr=PIPE)
-    if p.stderr.read(): print(p.stderr.read())
-    data = fromjson(job.fn(group['fn_out']))
-    data = data['results']
-    data['mem_max'] = max_mem
-    data['mem_unit'] = 'MiB'
-    tojson(job.fn(group['fn_res']), data)
+    carry_on = True
+    N_ITERATIONS = [int(data['N_ITERATIONS']*(1+f)) for f in [0., 0.5, 1, 2, 3, 5, 10, 20, 30, 50, 100]]
+    for N_ITERATION in N_ITERATIONS:
+        if run(job, N_ITERATION, max_mem):
+            break
+
 
 @FlowProject.operation
 @FlowProject.pre.after(compute_ri_cpp)

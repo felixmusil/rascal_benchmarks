@@ -30,10 +30,11 @@ for REPRESENTATION_PARAM in REPRESENTATION_PARAMS:
         continue
     if REPRESENTATION_PARAM['name'] != 'qm9':
         continue
-    
+
     if np.all([REPRESENTATION_PARAM['representation'][k] == v for k,v in fixed_params.items()]):
         rep_args = deepcopy(REPRESENTATION_PARAM)
         rep_args['N_ITERATIONS'] = 50
+        rep_args['n_structures'] = 2500
         rep_args['representation'] = {
             k:v for k,v in rep_args['representation'].items() if k not in del_params}
         job = project.open_job(rep_args)
