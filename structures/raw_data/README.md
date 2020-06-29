@@ -8,11 +8,13 @@ article https://doi.org/10.1021/acs.jctc.8b00959
 
 complete version of the dataset used in this article
 
-## qm9_5000.xyz
+## qm9_5000.xyz and qm9_eV_5000.dHf_peratom.npy
 
 article https://doi.org/10.1039/C8CP05921G
 
 data http://www.rsc.org/suppdata/c8/cp/c8cp05921g/c8cp05921g1.zip
+
+
 
 ## bulk methane / repo-fit-bulk
 
