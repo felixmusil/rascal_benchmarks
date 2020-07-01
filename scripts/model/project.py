@@ -1,3 +1,6 @@
+import os
+os.environ["OMP_NUM_THREADS"] = "1"
+
 # project.py
 from flow import FlowProject
 from subprocess import Popen, PIPE, run
@@ -6,7 +9,7 @@ from copy import deepcopy
 from ase.io import read
 import sys, os
 import numpy as np
-from time import sleep
+from time import sleep, ctime
 
 sys.path.insert(0, join(dirname(__file__), '../'))
 from path import STRUCTURE_PATH, RASCAL_BUILD_PATH, BUILD_PATH
@@ -23,6 +26,8 @@ from rascal.utils.random_filter import RandomFilter
 from rascal.utils.io import dump_obj,load_obj
 from ase.build import make_supercell
 from tqdm import tqdm
+
+
 
 group = {
     'sparse_point_fn' : 'sparse_point.json',
@@ -98,8 +103,8 @@ def compute_feature_selection(job):
     managers = soap.transform(frames)
     compressor = RandomFilter(soap, **sp['feature_subselection'])
     feature_subselection = compressor.select_and_filter(managers)
-    if sp['feature_subselection']['Nselect'] is None:
-        feature_subselection['coefficient_subselection'] = None
+    # if sp['feature_subselection']['Nselect'] is None:
+    #     feature_subselection['coefficient_subselection'] = None
     tojson(job.fn(group['feature_fn']), feature_subselection)
 
 @FlowProject.operation
@@ -330,4 +335,6 @@ def store_benchmark_in_document(job):
 
 
 if __name__ == '__main__':
+    print(ctime())
     FlowProject().main()
+    print(ctime())
