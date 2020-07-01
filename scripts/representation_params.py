@@ -6,7 +6,7 @@ from path import STRUCTURE_PATH, RASCAL_BUILD_PATH, BUILD_PATH
 # Define parameter space
 fns = {
     'qm9': 'qm9.json',
-    'molecular_crystals': 'molecular_crystals_50.json',
+    'molecular_crystals': 'molecular_crystals.json',
     'silicon_bulk': 'silicon_bulk.json',
     'methane_liquid': 'methane_liquid.json',
     'methane_sulfonic': 'methane_sulfonic_150.json'

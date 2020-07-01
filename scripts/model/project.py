@@ -6,11 +6,12 @@ from copy import deepcopy
 from ase.io import read
 import sys, os
 import numpy as np
-from codetiming import Timer
+from time import sleep
 
 sys.path.insert(0, join(dirname(__file__), '../'))
 from path import STRUCTURE_PATH, RASCAL_BUILD_PATH, BUILD_PATH
 from utils.io import tojson, fromjson, fromfile, _decode
+from utils import Timer
 sys.path.insert(0, RASCAL_BUILD_PATH)
 from rascal.representations import SphericalInvariants, SphericalExpansion
 from rascal.representations.spherical_invariants import get_power_spectrum_index_mapping
@@ -20,13 +21,24 @@ from rascal.neighbourlist import AtomsList
 from rascal.utils import from_dict, CURFilter, fps, to_dict
 from rascal.utils.random_filter import RandomFilter
 from rascal.utils.io import dump_obj,load_obj
+from ase.build import make_supercell
+from tqdm import tqdm
 
 group = {
     'sparse_point_fn' : 'sparse_point.json',
+    'feature_fn' : 'feature.json',
     'knm_fn' : 'knm.npy',
     'kernel_fn' : 'kernel.json',
     'model_fn' : 'model.json',
     'benchmark_fn' : 'benchmark.json',
+}
+
+en_field = {
+    'qm9': 'dHf_peratom',
+    'molecular_crystals': 'ENERGY',
+    'silicon_bulk': 'dft_energy',
+    'methane_liquid': 'energy',
+    'methane_sulfonic': 'energy',
 }
 
 def get_feature_index_mapping(soap, species):
@@ -60,6 +72,9 @@ def get_randomly_sparsified_soap(data, rep):
     return soap,n_feat
 
 @FlowProject.label
+def feature_sel_computed(job):
+    return job.isfile(group['feature_fn'])
+@FlowProject.label
 def sparse_point_computed(job):
     return job.isfile(group['sparse_point_fn'])
 @FlowProject.label
@@ -74,6 +89,21 @@ def benchmark_computed(job):
 
 
 @FlowProject.operation
+@FlowProject.post(feature_sel_computed)
+def compute_feature_selection(job):
+    sp = _decode(job.statepoint())
+    st,lg = job.sp.start_structure, job.sp.n_structures
+    frames = fromfile(job.sp.filename)[st:st+lg]
+    soap = SphericalInvariants(**sp['representation'])
+    managers = soap.transform(frames)
+    compressor = RandomFilter(soap, **sp['feature_subselection'])
+    feature_subselection = compressor.select_and_filter(managers)
+    if sp['feature_subselection']['Nselect'] is None:
+        feature_subselection['coefficient_subselection'] = None
+    tojson(job.fn(group['feature_fn']), feature_subselection)
+
+@FlowProject.operation
+@FlowProject.pre.after(compute_feature_selection)
 @FlowProject.post(sparse_point_computed)
 def compute_sparse_point(job):
     sp = _decode(job.statepoint())
@@ -81,8 +111,15 @@ def compute_sparse_point(job):
     frames = fromfile(job.sp.filename)[st:st+lg]
     soap = SphericalInvariants(**sp['representation'])
     managers = soap.transform(frames)
-    compressor = RandomFilter(soap, **sp['RandomFilter'])
-    X_pseudo = compressor.select_and_filter(managers)
+    compressor = RandomFilter(soap, **sp['sparse_point_subselection'])
+    compressor.select(managers)
+
+    feature_subselection = fromjson(job.fn(group['feature_fn']))
+    sp['representation']['coefficient_subselection'] = feature_subselection['coefficient_subselection']
+    soap = SphericalInvariants(**sp['representation'])
+    managers = soap.transform(frames)
+    compressor._representation = soap
+    X_pseudo = compressor.filter(managers)
     dump_obj(job.fn(group['sparse_point_fn']), X_pseudo)
 
 def compute(i_frame,frame, soap, kernel, X_pseudo, grad=False):
@@ -103,6 +140,7 @@ def compute_knm(job):
 
     hypers = X_pseudo.representation._get_init_params()
     hypers['compute_gradients'] = job.sp.train_with_grad
+
     soap = SphericalInvariants(**hypers)
     kernel = Kernel(soap, **sp['kernel'])
 
@@ -162,7 +200,7 @@ def train_gap_model(kernel, frames, KNM_, X_pseudo, y_train, self_contributions,
             Y0[iframe] += self_contributions[sp]
     Y = Y - Y0
     delta = np.std(Y)
-    print(delta)
+    # print(delta)
     # lambdas[0] is provided per atom hence the '* np.sqrt(Natoms)'
     # the first n_centers rows of KNM are expected to refer to the
     # property
@@ -203,9 +241,10 @@ def train_model(job):
 
     X_pseudo = load_obj(job.fn(group['sparse_point_fn']))
     kernel = load_obj(job.fn(group['kernel_fn']))
+
     KNM = np.load(job.fn(group['knm_fn']), mmap_mode='r')
 
-    y,f = extract_ref(frames, info_key='dft_energy',array_key='zeros')
+    y,f = extract_ref(frames, info_key=en_field[job.sp.name],array_key='zeros')
     if not job.sp.train_with_grad:
         f = None
     else:
@@ -244,47 +283,50 @@ def compute_benchmark(job):
     kernel = Kernel(soap, **sp['kernel'])
 
     N_ITERATIONS = sp['N_ITERATIONS']
-    N_ITERATIONS = 2
+    tags = ['NL', 'rep with grad', 'pred energy', 'pred forces']
+    timers = {k:Timer(tag=k, logger=None) for k in tags}
+    if job.sp.name != 'qm9':
+        frames = [make_supercell(frames[0], job.sp.n_replication*np.eye(3), wrap=True, tol=1e-11)]
 
-    t1 = Timer(name='NL',text='')
-    t2 = Timer(name='rep with grad',text='')
-    t2b = Timer(name='rep no grad',text='')
-    t3 = Timer(name='kernel',text='')
-    t3b = Timer(name='kernel grad',text='')
-    t4 = Timer(name='pred energy',text='')
-    t5 = Timer(name='pred forces',text='')
+    for _ in tqdm(range(N_ITERATIONS), desc=job.sp.name, leave=True):
+        with timers['NL']:
+            managers = AtomsList(frames, nl_options)
+        sleep(0.1)
+        with timers['rep with grad']:
+            managers = soap.transform(managers)
+        sleep(0.1)
+        Y0 = model._get_property_baseline(managers)
+        with timers['pred energy']:
+            KNM = kernel(managers, model.X_train, (False, False))
+            Y0 + np.dot(KNM, model.weights).reshape((-1))
+        sleep(0.1)
+        with timers['pred forces']:
+            KNM = kernel(managers, model.X_train, (True, False))
+            np.dot(KNM, model.weights).reshape((-1, 3))
+        sleep(0.1)
+        managers, KNM = [], []
+        del managers, KNM
+        sleep(0.3)
 
     n_atoms = 0
     for frame in frames:
         n_atoms += len(frame)
 
-    for _ in range(N_ITERATIONS):
-        with t1:
-            managers = AtomsList(frames, nl_options)
-        with t2:
-            managers = soap.transform(managers)
+    timings = []
+    for tag in tags:
+        data = timers[tag].dumps()
+        data.update({'name':job.sp.name,'n_atoms':n_atoms})
+        timings.append(data)
 
-        Y0 = model._get_property_baseline(managers)
+    tojson(job.fn(group['benchmark_fn']), timings)
 
-        with t3:
-            KNM = kernel(managers, model.X_train, (False, False))
-        with t4:
-            Y0 + np.dot(KNM, model.weights).reshape((-1))
 
-        with t3b:
-            KNM = kernel(managers, model.X_train, (True, False))
-        with t5:
-            np.dot(KNM, model.weights).reshape((-1, 3))
-
-    print(Timer.timers)
-    print(Timer.timers.mean('rep with grad'),Timer.timers.stdev('rep with grad'))
-
-# @FlowProject.operation
-# @FlowProject.pre.after(compute_si_cpp)
-# @FlowProject.post(lambda job: group['name'] in job.document)
-# def store_si_cpp_in_document(job):
-#     data = fromjson(job.fn(group['fn_res']))
-#     job.document = data
+@FlowProject.operation
+@FlowProject.pre.after(compute_benchmark)
+@FlowProject.post(lambda job: 'benchmark' in job.document)
+def store_benchmark_in_document(job):
+    data = fromjson(job.fn(group['benchmark_fn']))
+    job.document = {'benchmark' :data}
 
 
 if __name__ == '__main__':
