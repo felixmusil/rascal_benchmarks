@@ -79,7 +79,6 @@ sparse_point_subselections = {
     'methane_sulfonic' : [dict(Nselect={1:int(v/4),6:int(v/4),8:int(v/4),16:int(v/4)}, act_on='sample per species', seed=seed) for v in n_sparse],
 }
 
-
 models = {
     'silicon_bulk' : [
         {
