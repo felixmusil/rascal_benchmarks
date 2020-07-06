@@ -9,4 +9,4 @@
 
 conda activate rascal_benchmark
 
-python project.py run -f name qm9 --parallel 5 --progress
+python project.py run -f name methane_liquid --parallel 5 --progress
