@@ -55,6 +55,7 @@ if __name__ == '__main__':
     if args.run:
         print('Run all project')
         for path in Path('./').rglob('project.py'):
+            # if 'model' in os.path.dirname(path):continue
             print('    ',os.path.dirname(path))
             move = ['cd',os.path.dirname(path),'&&']
             command = ' '.join(move+['python', os.path.abspath(path), 'run', parallel, '--progress']+back2root)
@@ -63,6 +64,7 @@ if __name__ == '__main__':
     if args.status:
         print('Run all project')
         for path in Path('./').rglob('project.py'):
+            # if 'model' in os.path.dirname(path):continue
             print('    ',os.path.dirname(path))
             move = ['cd',os.path.dirname(path),'&&']
             command = ' '.join(move+['python', os.path.abspath(path), 'status']+back2root)

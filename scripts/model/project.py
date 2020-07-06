@@ -293,7 +293,8 @@ def compute_benchmark(job):
     if job.sp.name != 'qm9':
         frames = [make_supercell(frames[0], job.sp.n_replication*np.eye(3), wrap=True, tol=1e-11)]
 
-    for _ in tqdm(range(N_ITERATIONS), desc=job.sp.name, leave=True):
+    # for _ in tqdm(range(N_ITERATIONS), desc=job.sp.name, leave=True):
+    for ii in range(N_ITERATIONS):
         with timers['NL']:
             managers = AtomsList(frames, nl_options)
         sleep(0.1)
@@ -312,6 +313,7 @@ def compute_benchmark(job):
         managers, KNM = [], []
         del managers, KNM
         sleep(0.3)
+        print(ctime(), job.sp.name, 100*(ii/N_ITERATIONS))
 
     n_atoms = 0
     for frame in frames:
@@ -331,7 +333,7 @@ def compute_benchmark(job):
 @FlowProject.post(lambda job: 'benchmark' in job.document)
 def store_benchmark_in_document(job):
     data = fromjson(job.fn(group['benchmark_fn']))
-    job.document = {'benchmark' :data}
+    job.document = {'benchmark' :data, 'timestamp':ctime()}
 
 
 if __name__ == '__main__':
