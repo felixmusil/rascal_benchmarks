@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --chdir /scratch/musil/rascal_benchmarks/scripts/model
+#SBATCH --chdir /scratch/musil/rascal_benchmarks/scripts/spherical_invariants
 #SBATCH --nodes 1
 #SBATCH --ntasks 1
 #SBATCH --cpus-per-task 5

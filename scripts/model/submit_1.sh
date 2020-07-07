@@ -9,4 +9,4 @@
 
 conda activate rascal_benchmark
 
-python project.py run -f name molecular_crystals --parallel 5 --progress
+python project.py run -f name molecular_crystals --parallel 3 --progress  2>&1 | tee status_1.txt

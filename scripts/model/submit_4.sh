@@ -9,4 +9,4 @@
 
 conda activate rascal_benchmark
 
-python project.py run -f name methane_sulfonic --parallel 5 --progress
+python project.py run -f name methane_sulfonic --parallel 3 --progress  2>&1 | tee status_4.txt
