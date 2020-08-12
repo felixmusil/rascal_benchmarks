@@ -39,7 +39,7 @@ misc_entries = {
     'methane_sulfonic' : {
         "N_ITERATIONS" : 5,
         'start_structure': 0,
-        "n_structures" : 85,
+        "n_structures" : 10,
     },
 }
 
