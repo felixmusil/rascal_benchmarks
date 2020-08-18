@@ -1,6 +1,7 @@
 """Run QUIP benchmarks"""
 
 import os
+import errno
 import subprocess
 
 import signac
@@ -36,16 +37,19 @@ def link_xyz_file(job):
                     signac.get_project().root_directory(),
                     '../../structures/raw_data',
                     name), job.fn(basename))
-    except OSError:
-        # oh, fuck off
-        pass
+    except OSError as ose:
+        if ose.errno == errno.EEXIST:
+            # Shouldn't signac take care of not executing this more than once?
+            pass
+        else:
+            raise ose
 
 
 #TODO is this a workflow operation?
 def build_gap_fit_command_line(job):
     cmd = 'gap_fit'
     args = []
-    args.append('at_file={:s}'.format(job.sp.system_filename))
+    args.append('at_file={:s}'.format(job.fn(job.sp.system_filename)))
     args.append(
         'gap={{soap atom_sigma={sp.atom_width:f} l_max={sp.l_max:d} '
         'n_max={sp.n_max:d} cutoff={sp.cutoff:f} '
@@ -61,7 +65,7 @@ def build_gap_fit_command_line(job):
         ' 1.0 1.0 }}'.format(job.sp))
     args.append('energy_parameter_name={0.energy_key:s}'.format(job.sp))
     args.append('force_parameter_name={0.force_key:s}'.format(job.sp))
-    args.append('gp_file=potential.xml')
+    args.append('gp_file={:s}'.format(job.fn('potential.xml')))
     return [cmd, ] + args
 
 @FlowProject.label
