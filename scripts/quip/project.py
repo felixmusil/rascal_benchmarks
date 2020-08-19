@@ -4,7 +4,23 @@ import os
 import subprocess
 
 import signac
-from flow import FlowProject
+import flow
+from flow import FlowProject, directives
+
+
+class HelvetiosEnvironment(flow.environment.DefaultSlurmEnvironment):
+
+    hostname_pattern = r'^helvetios$'
+    template = 'helvetios.sh'
+
+    @classmethod
+    def add_args(cls, parser):
+        super(HelvetiosEnvironment, cls).add_args(parser)
+        parser.add_argument('--job-output',
+                            help="Write output to the specified file. "
+                            "Slurm substitutions (e.g. %j) are accepted.")
+        parser.add_argument('--partition',
+                            help="Name of the slurm partition to submit to")
 
 
 def atoms_file_linked(job):
@@ -56,6 +72,7 @@ def gap_fit_success(job):
 @FlowProject.operation
 @FlowProject.pre(atoms_file_linked)
 @FlowProject.post(gap_fit_success)
+@directives(omp_num_threads=18)
 def fit_gap(job):
     cmdline = build_gap_fit_command_line(job)
     print(cmdline)
