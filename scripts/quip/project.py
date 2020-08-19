@@ -46,7 +46,7 @@ def build_gap_fit_command_line(job):
         'energy_scale={sp.energy_scale:f} add_species n_species={n_species:d} '
         'species_Z={{{{ {species_str:s} }}}} n_sparse={sp.n_sparse:d} '
         'sparse_method=cur_points covariance_type=dot_product '
-        'soap_exponent={sp.soap_zeta:d} e0_method=average }}'.format(
+        'soap_exponent={sp.soap_zeta:d} }}'.format(
             sp=job.sp, n_species=len(job.doc.global_species),
             species_str=(' '.join(str(num) for num in job.doc.global_species))))
     args.append(
@@ -54,6 +54,7 @@ def build_gap_fit_command_line(job):
         ' 1.0 1.0 }}'.format(job.sp))
     args.append('energy_parameter_name={0.energy_key:s}'.format(job.doc))
     args.append('force_parameter_name={0.force_key:s}'.format(job.doc))
+    args.append('e0_method=average')
     args.append('gp_file={:s}'.format(job.fn('potential.xml')))
     return [cmd, ] + args
 
