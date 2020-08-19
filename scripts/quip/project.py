@@ -24,31 +24,21 @@ class HelvetiosEnvironment(flow.environment.DefaultSlurmEnvironment):
                             help="Name of the slurm partition to submit to")
 
 
-def atoms_file_linked(job):
-    return job.isfile(os.path.basename(job.doc.atoms_filename))
-
-
-@FlowProject.operation
-@FlowProject.post(atoms_file_linked)
-def link_xyz_file(job):
-    source_file_dir = os.path.join(signac.get_project().root_directory(),
-                                   '../../structures/raw_data')
-    try:
-        os.symlink(os.path.join(source_file_dir, job.doc.system_sourcefile),
-                   job.fn(job.doc.atoms_filename))
-    except OSError as ose:
-        if ose.errno == errno.EEXIST:
-            # Shouldn't signac take care of not executing this more than once?
-            pass
-        else:
-            raise ose
+@FlowProject.label
+def atoms_file_available(job):
+    return job.isfile(os.path.join(signac.get_project().root_directory(),
+                                   'xyz_files',
+                                   job.doc.atoms_filename))
 
 
 #TODO is this a workflow operation?
 def build_gap_fit_command_line(job):
     cmd = 'gap_fit'
     args = []
-    args.append('at_file={:s}'.format(job.fn(job.doc.atoms_filename)))
+    args.append('at_file={:s}'.format(
+        os.path.join(signac.get_project().root_directory(),
+                     'xyz_files',
+                     job.doc.atoms_filename)))
     args.append(
         'gap={{soap atom_sigma={sp.atom_width:f} l_max={sp.l_max:d} '
         'n_max={sp.n_max:d} cutoff={sp.cutoff:f} '
@@ -74,7 +64,7 @@ def gap_fit_success(job):
 
 
 @FlowProject.operation
-@FlowProject.pre(atoms_file_linked)
+@FlowProject.pre(atoms_file_available)
 @FlowProject.post(gap_fit_success)
 @directives(omp_num_threads=18)
 def fit_gap(job):
