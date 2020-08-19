@@ -1,6 +1,7 @@
 """Initialize the data space for QUIP overall model benchmarks"""
 
 import itertools
+import os
 
 import signac
 
@@ -70,11 +71,13 @@ n_sparse_all = [100, 200, 500, 1000, 2000, 5000, 9000]
 for (system_name, param_set), n_sparse in itertools.product(
         gap_fit_params_fixed.items(), n_sparse_all):
     param_set['system_name'] = system_name
-    param_set['system_filename'] = system_filenames[system_name]
-    param_set['energy_key'] = system_energy_keys[system_name]
-    param_set['force_key'] = system_force_keys[system_name]
     param_set['n_sparse'] = n_sparse
-    param_set['global_species'] = global_species[system_name]
     job = project.open_job(param_set)
     job.init()
+    # Metadata that is system-specific, but doesn't define a state point
+    job.doc['system_sourcefile'] = system_filenames[system_name]
+    job.doc['atoms_filename'] = os.path.basename(system_filenames[system_name])
+    job.doc['energy_key'] = system_energy_keys[system_name]
+    job.doc['force_key'] = system_force_keys[system_name]
+    job.doc['global_species'] = global_species[system_name]
 

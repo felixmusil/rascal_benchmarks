@@ -25,18 +25,17 @@ class HelvetiosEnvironment(flow.environment.DefaultSlurmEnvironment):
 
 
 def atoms_file_linked(job):
-    return job.isfile(os.path.basename(job.sp.system_filename))
+    return job.isfile(os.path.basename(job.doc.atoms_filename))
+
 
 @FlowProject.operation
 @FlowProject.post(atoms_file_linked)
 def link_xyz_file(job):
-    name = job.sp.system_filename
-    basename = os.path.basename(job.sp.system_filename)
+    source_file_dir = os.path.join(signac.get_project().root_directory(),
+                                   '../../structures/raw_data')
     try:
-        os.symlink(os.path.join(
-                    signac.get_project().root_directory(),
-                    '../../structures/raw_data',
-                    name), job.fn(basename))
+        os.symlink(os.path.join(source_file_dir, job.doc.system_sourcefile),
+                   job.fn(job.doc.atoms_filename))
     except OSError as ose:
         if ose.errno == errno.EEXIST:
             # Shouldn't signac take care of not executing this more than once?
@@ -49,7 +48,7 @@ def link_xyz_file(job):
 def build_gap_fit_command_line(job):
     cmd = 'gap_fit'
     args = []
-    args.append('at_file={:s}'.format(job.fn(job.sp.system_filename)))
+    args.append('at_file={:s}'.format(job.fn(job.doc.atoms_filename)))
     args.append(
         'gap={{soap atom_sigma={sp.atom_width:f} l_max={sp.l_max:d} '
         'n_max={sp.n_max:d} cutoff={sp.cutoff:f} '
@@ -58,15 +57,16 @@ def build_gap_fit_command_line(job):
         'species_Z={{{{ {species_str:s} }}}} n_sparse={sp.n_sparse:d} '
         'sparse_method=cur_points covariance_type=dot_product '
         'soap_exponent={sp.soap_zeta:d} }}'.format(
-            sp=job.sp, n_species=len(job.sp.global_species),
-            species_str=(' '.join(str(num) for num in job.sp.global_species))))
+            sp=job.sp, n_species=len(job.doc.global_species),
+            species_str=(' '.join(str(num) for num in job.doc.global_species))))
     args.append(
         'default_kernel_regularisation={{ {0.energy_reg:f} {0.force_reg:f}'
         ' 1.0 1.0 }}'.format(job.sp))
-    args.append('energy_parameter_name={0.energy_key:s}'.format(job.sp))
-    args.append('force_parameter_name={0.force_key:s}'.format(job.sp))
+    args.append('energy_parameter_name={0.energy_key:s}'.format(job.doc))
+    args.append('force_parameter_name={0.force_key:s}'.format(job.doc))
     args.append('gp_file={:s}'.format(job.fn('potential.xml')))
     return [cmd, ] + args
+
 
 @FlowProject.label
 def gap_fit_success(job):

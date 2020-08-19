@@ -13,6 +13,7 @@ methane_liquid
 *.so
 *slurm-*.out
 *workspace
+view/
 .idea/
 .vscode/
 .DS_Store
