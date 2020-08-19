@@ -292,6 +292,8 @@ def compute_benchmark(job):
     timers = {k:Timer(tag=k, logger=None) for k in tags}
     if job.sp.name != 'qm9':
         frames = [make_supercell(frames[0], job.sp.n_replication*np.eye(3), wrap=True, tol=1e-11)]
+    else:
+        frames = frames[:50]
 
     # for _ in tqdm(range(N_ITERATIONS), desc=job.sp.name, leave=True):
     for ii in range(N_ITERATIONS):
