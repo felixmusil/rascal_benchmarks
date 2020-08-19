@@ -65,7 +65,7 @@ radial_basis_args = {
     'DVR_Spline' : {
             'radial_basis': 'DVR',
             'optimization_args':{
-                'type': 'Spline', 'accuracy': 1e-8, 'range': [0,0]
+                'type': 'Spline', 'accuracy': 1e-8, 'range': [1e-6,0]
             }
     }
 }
