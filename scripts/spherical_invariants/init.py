@@ -18,7 +18,7 @@ fixed_accuracy = 1e-8
 misc_entries = {
     'qm9' : {
         "N_ITERATIONS" : 5,
-        "n_structures" : 300,
+        "n_structures" : 200,
         'start_structure': 0,
     },
     'molecular_crystals' : {
