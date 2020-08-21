@@ -19,7 +19,7 @@ class HelvetiosEnvironment(flow.environment.DefaultSlurmEnvironment):
         super(HelvetiosEnvironment, cls).add_args(parser)
         parser.add_argument('--job-output',
                             help="Write output to the specified file. "
-                            "Slurm substitutions (e.g. %j) are accepted.")
+                            "Slurm substitutions (e.g. %%j) are accepted.")
         parser.add_argument('--partition',
                             help="Name of the slurm partition to submit to")
 
@@ -54,6 +54,8 @@ def build_gap_fit_command_line(job):
         ' 1.0 1.0 }}'.format(job.sp))
     args.append('energy_parameter_name={0.energy_key:s}'.format(job.doc))
     args.append('force_parameter_name={0.force_key:s}'.format(job.doc))
+    # We're not fitting with virials, no matter what
+    args.append('virial_parameter_name=none')
     args.append('e0_method=average')
     args.append('gp_file={:s}'.format(job.fn('potential.xml')))
     return [cmd, ] + args
@@ -88,8 +90,10 @@ def gap_fit_success(job):
 @directives(omp_num_threads=18)
 def fit_gap(job):
     cmdline = build_gap_fit_command_line(job)
+    outfile_name = 'fit_gap.out'
     print(cmdline)
-    subprocess.run(cmdline)
+    with open(job.fn(outfile_name), 'a') as outfile:
+        subprocess.run(cmdline, stdout=outfile)
 
 
 @FlowProject.label
