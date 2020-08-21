@@ -50,14 +50,22 @@ global_species = {
 gap_fit_params_default = {
     'cutoff': 5.0,
     'cutoff_transition_width': 1.0,
-    'n_max': 10,
-    'l_max': 12,
+    #'n_max': 10,
+    #'l_max': 12,
     'atom_width': 0.4,
     'soap_zeta': 2,
     'energy_scale': 1.0,
     'energy_reg': 0.001,
     'force_reg': 0.01
 }
+
+nl_sets = [
+    {'n_max': 10, 'l_max': 12},
+    {'n_max': 8, 'l_max': 6}
+]
+
+do_train_with_forces = [True, False]
+
 gap_fit_params_fixed = {name: gap_fit_params_default for name in system_names}
 
 # Exceptions to the default params (why...?)
@@ -68,16 +76,22 @@ gap_fit_params_fixed['qm9']['atom_width'] = 0.3
 
 n_sparse_all = [100, 200, 500, 1000, 2000, 5000, 9000]
 
-for (system_name, param_set), n_sparse in itertools.product(
-        gap_fit_params_fixed.items(), n_sparse_all):
+for (system_name, param_set), n_sparse, nl_set, use_forces in itertools.product(
+        gap_fit_params_fixed.items(), n_sparse_all, nl_sets, do_train_with_forces):
     param_set['system_name'] = system_name
     param_set['n_sparse'] = n_sparse
+    param_set['n_max'] = nl_set['n_max']
+    param_set['l_max'] = nl_set['l_max']
+    param_set['train_with_forces'] = use_forces
     job = project.open_job(param_set)
     job.init()
     # Metadata that is system-specific, but doesn't define a state point
     job.doc['system_sourcefile'] = system_filenames[system_name]
     job.doc['atoms_filename'] = os.path.basename(system_filenames[system_name])
     job.doc['energy_key'] = system_energy_keys[system_name]
-    job.doc['force_key'] = system_force_keys[system_name]
+    if use_forces:
+        job.doc['force_key'] = system_force_keys[system_name]
+    else:
+        job.doc['force_key'] = 'none'
     job.doc['global_species'] = global_species[system_name]
 
