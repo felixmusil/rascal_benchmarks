@@ -2,11 +2,17 @@
 
 import os
 import errno
+import logging
 import subprocess
 
+import numpy as np
 import signac
 import flow
 from flow import FlowProject, directives
+
+
+LOGGER = logging.getLogger(__name__)
+LOGGER.basicConfig()
 
 
 class HelvetiosEnvironment(flow.environment.DefaultSlurmEnvironment):
@@ -98,22 +104,111 @@ def fit_gap(job):
 
 @FlowProject.label
 def has_energy_timings(job):
-    return ('time_total_eonly' in job.doc)
+    return ('energy_ip_total_time_peratom_mean' in job.doc)
+
+def has_energy_output(job):
+    outfile_name = 'energies_output.out'
+    if not job.isfile(outfile_name):
+        return False
+    else:
+        # Check if the (potentially very large) file ends in the expected string
+        fileend = "libAtoms::Finalise: Bye-Bye!\n"
+        # Warning: Potential race condition(s)
+        # (also implicitly assuming UTF-8 encoding)
+        fsize = os.stat(job.fn(outfile_name).st_size
+        with open(job.fn(outfile_name, 'r')) as outfile:
+            outfile.seek(fsize - len(fileend))
+            return (outfile.read(len(fileend)) == fileend)
 
 
 @FlowProject.operation
 @FlowProject.pre(gap_fit_success)
-@FlowProject.post(has_energy_timings)
+@FlowProject.post(has_energy_output)
 @directives(omp_num_threads=1)
 def time_quip_energies(job):
     old_dir = os.getcwd()
     quip_cmdline = build_quip_command_line(job)
     try:
         os.chdir(job.workspace())
-        with open('energies_output.out', 'a') as outfile:
+        with open('energies_output.out', 'w') as outfile:
             subprocess.run(quip_cmdline, stdout=outfile)
     finally:
         os.chdir(old_dir)
+
+
+@FlowProject.operation
+@FlowProject.pre(has_energy_output)
+@FlowProject.post(has_energy_timings)
+def parse_energy_timings(job)
+
+    with open('energies_output.out', 'r') as outfile:
+        connect_timer = []
+        soap_timer = []
+        gap_timer = []
+        ip_timer = []
+        natoms_list = []
+        for line in outfile:
+            atmatch = re.match(r'AT (\d+)', line)
+            if atmatch:
+                natoms_list.append(int(atmatch.group(1)))
+            if re.match('TIMER: calc_connect', line):
+                connect_timer.append(float(line.split()[7]))
+            if re.match('TIMER: soap_calc', line):
+                soap_timer.append(float(line.split()[7]))
+            if re.match('TIMER: IPModel_GAP_Calc_gp_predict', line):
+                gap_timer.append(float(line.split()[7]))
+            if re.match('TIMER: IP_Calc', line):
+                ip_timer.append(float(line.split()[7]))
+    # Check for consistency
+    n_configs = len(natoms_list)
+    # Check index file: Not fatal if wrong or missing, but should be noticed
+    xyz_index_file = os.path.join(signac.get_project().root_directory(),
+                                  'xyz_files',
+                                  job.doc.atoms_filename + '.idx')
+    if os.path.isfile(xyz_index_file):
+        with open(xyz_index_file, 'r') as idx_f:
+            n_configs_index = int(idx_f.readline())
+        if n_configs_index != n_configs:
+            LOGGER.warning("Mismatch between {:d} configurations in energy "
+                           "output and {:d} in index file {:s}".format(
+                               n_configs, n_configs_index, xyz_index_file))
+    else:
+        LOGGER.warning("Could not find index file {:s}".format(xyz_index_file))
+    error_message = ("Wrong number {number:d} of {time_type:s} timings in file"
+                     " {filename:s}")
+    if len(connect_timer) != 2*n_configs:
+        raise ValueError(error_message.format(number=len(connect_timer),
+                                              time_type='calc_connect',
+                                              filename=job.fn('energy_output.out')))
+    for time_list, time_name in zip((soap_timer, gap_timer, ip_timer),
+                                    ('soap_calc', 'gap_calc', 'IP_calc')):
+        if len(time_list) != n_configs:
+            raise ValueError(error_message.format(
+                number=len(time_list),
+                time_type=time_name,
+                filename=job.fn('energy_output.out')
+            )
+
+    # Store the data
+    natoms_list = np.array(natoms_list)
+    job.data['energy_natoms'] = np.array(natoms_list)
+    job.data['energy_connect_timings'] = np.array(connect_timer)
+    job.data['energy_soap_timings'] = np.array(soap_timer)
+    job.data['energy_gap_timings'] = np.array(gap_timer)
+    job.data['energy_ip_timings'] = np.array(ip_timer)
+
+    # Gather statistics
+    connect_total = np.sum(np.array(connect_timer).reshape((-1, 2)), axis=1)
+    for time_list, time_name in zip((connect_total, soap_timer, gap_timer, ip_timer),
+                                    ('calc_connect', 'soap', 'gap', 'ip_total')):
+        job.doc['energy_{:s}_time_peratom_mean'.format(time_name)] = np.mean(
+            np.array(time_list) / natoms_list)
+        job.doc['energy_{:s}_time_peratom_min'.format(time_name)] = np.min(
+            np.array(time_list) / natoms_list)
+        job.doc['energy_{:s}_time_peratom_max'.format(time_name)] = np.max(
+            np.array(time_list) / natoms_list)
+        job.doc['energy_{:s}_time_peratom_std'.format(time_name)] = np.std(
+            np.array(time_list) / natoms_list)
 
 
 if __name__ == "__main__":
