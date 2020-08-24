@@ -59,6 +59,24 @@ def build_gap_fit_command_line(job):
     return [cmd, ] + args
 
 
+def build_quip_command_line(job, do_forces=False):
+    cmd = 'quip'
+    args = []
+    # May use a separate test atoms file later
+    args.append('atoms_filename={:s}'.format(
+        os.path.join(signac.get_project().root_directory(),
+                     'xyz_files',
+                     job.doc.atoms_filename)))
+    # We're assuming this needs to be run in the workspace directory
+    # because of the sparseX files that go along with the potential
+    args.append('param_filename=potential.xml')
+    args.append('E')
+    if do_forces:
+        args.append('F')
+    args.append('timing')
+    return [cmd, ] + args
+
+
 @FlowProject.label
 def gap_fit_success(job):
     return job.isfile('potential.xml')
@@ -72,6 +90,26 @@ def fit_gap(job):
     cmdline = build_gap_fit_command_line(job)
     print(cmdline)
     subprocess.run(cmdline)
+
+
+@FlowProject.label
+def has_energy_timings(job):
+    return ('time_total_eonly' in job.doc)
+
+
+@FlowProject.operation
+@FlowProject.pre(gap_fit_success)
+@FlowProject.post(has_energy_timings)
+@directives(omp_num_threads=1)
+def time_quip_energies(job):
+    old_dir = os.getcwd()
+    quip_cmdline = build_quip_command_line(job)
+    try:
+        os.chdir(job.workspace())
+        with open('energies_output.out', 'a') as outfile:
+            subprocess.run(quip_cmdline, stdout=outfile)
+    finally:
+        os.chdir(old_dir)
 
 
 if __name__ == "__main__":
