@@ -106,19 +106,36 @@ def fit_gap(job):
 def has_energy_timings(job):
     return ('energy_ip_total_time_peratom_mean' in job.doc)
 
+@FlowProject.label
+def has_force_timings(job):
+    return ('force_ip_total_time_peratom_mean' in job.doc)
+
+
+def has_libatoms_exit_message(filename):
+    """Check if the (potentially very large) file ends in the expected string"""
+    fileend = "libAtoms::Finalise: Bye-Bye!\n"
+    # Warning: Potential race condition(s)
+    # (also implicitly assuming UTF-8 encoding)
+    fsize = os.stat(filename).st_size
+    with open(filename, 'r') as outfile:
+        outfile.seek(fsize - len(fileend))
+        return (outfile.read(len(fileend)) == fileend)
+
+
 def has_energy_output(job):
     outfile_name = 'energies_output.out'
     if not job.isfile(outfile_name):
         return False
     else:
-        # Check if the (potentially very large) file ends in the expected string
-        fileend = "libAtoms::Finalise: Bye-Bye!\n"
-        # Warning: Potential race condition(s)
-        # (also implicitly assuming UTF-8 encoding)
-        fsize = os.stat(job.fn(outfile_name).st_size
-        with open(job.fn(outfile_name, 'r')) as outfile:
-            outfile.seek(fsize - len(fileend))
-            return (outfile.read(len(fileend)) == fileend)
+        return has_libatoms_exit_message(job, job.fn(outfile_name))
+
+
+def has_force_output(job):
+    outfile_name = 'forces_output.out'
+    if not job.isfile(outfile_name):
+        return False
+    else:
+        return has_libatoms_exit_message(job, job.fn(outfile_name))
 
 
 @FlowProject.operation
@@ -128,6 +145,7 @@ def has_energy_output(job):
 def time_quip_energies(job):
     old_dir = os.getcwd()
     quip_cmdline = build_quip_command_line(job)
+    print(quip_cmdline)
     try:
         os.chdir(job.workspace())
         with open('energies_output.out', 'w') as outfile:
@@ -137,11 +155,25 @@ def time_quip_energies(job):
 
 
 @FlowProject.operation
-@FlowProject.pre(has_energy_output)
-@FlowProject.post(has_energy_timings)
-def parse_energy_timings(job)
+@FlowProject.pre(gap_fit_success)
+@FlowProject.post(has_force_output)
+@directives(omp_num_threads=1)
+def time_quip_forces(job):
+    """Run QUIP timings with forces (and energies too)"""
+    old_dir = os.getcwd()
+    quip_cmdline = build_quip_command_line(job, do_forces=True)
+    print(quip_cmdline)
+    try:
+        os.chdir(job.workspace())
+        with open('forces_output.out', 'w') as outfile:
+            subprocess.run(quip_cmdline, stdout=outfile)
+    finally:
+        os.chdir(old_dir)
 
-    with open('energies_output.out', 'r') as outfile:
+
+def parse_quip_timings(job, filename):
+    """Parse timing data from 'quip' output and check for consistency"""
+    with open(job.fn(filename), 'r') as outfile:
         connect_timer = []
         soap_timer = []
         gap_timer = []
@@ -179,36 +211,57 @@ def parse_energy_timings(job)
     if len(connect_timer) != 2*n_configs:
         raise ValueError(error_message.format(number=len(connect_timer),
                                               time_type='calc_connect',
-                                              filename=job.fn('energy_output.out')))
+                                              filename=job.fn(filename)))
     for time_list, time_name in zip((soap_timer, gap_timer, ip_timer),
                                     ('soap_calc', 'gap_calc', 'IP_calc')):
         if len(time_list) != n_configs:
             raise ValueError(error_message.format(
                 number=len(time_list),
                 time_type=time_name,
-                filename=job.fn('energy_output.out')
+                filename=job.fn(filename)
             )
+    return {'natoms': np.array(natoms_list),
+            'calc_connect': np.array(connect_timer),
+            'soap': np.array(soap_timer),
+            'gap': np.array(gap_timer),
+            'ip_total': np.array(ip_timer)}
 
-    # Store the data
-    natoms_list = np.array(natoms_list)
-    job.data['energy_natoms'] = np.array(natoms_list)
-    job.data['energy_connect_timings'] = np.array(connect_timer)
-    job.data['energy_soap_timings'] = np.array(soap_timer)
-    job.data['energy_gap_timings'] = np.array(gap_timer)
-    job.data['energy_ip_timings'] = np.array(ip_timer)
 
-    # Gather statistics
-    connect_total = np.sum(np.array(connect_timer).reshape((-1, 2)), axis=1)
-    for time_list, time_name in zip((connect_total, soap_timer, gap_timer, ip_timer),
-                                    ('calc_connect', 'soap', 'gap', 'ip_total')):
-        job.doc['energy_{:s}_time_peratom_mean'.format(time_name)] = np.mean(
-            np.array(time_list) / natoms_list)
-        job.doc['energy_{:s}_time_peratom_min'.format(time_name)] = np.min(
-            np.array(time_list) / natoms_list)
-        job.doc['energy_{:s}_time_peratom_max'.format(time_name)] = np.max(
-            np.array(time_list) / natoms_list)
-        job.doc['energy_{:s}_time_peratom_std'.format(time_name)] = np.std(
-            np.array(time_list) / natoms_list)
+def store_timing_data(job, data, timing_key):
+    """Store QUIP timing data and compute summary statistics"""
+    for key, timer in data.items():
+        datakey = '_'.join(timing_key, key)
+        job.data[datakey] = timer
+    natoms_list = data['natoms']
+    del data['natoms']
+    for key, timer in data.items():
+        # Assuming calc_connect is called twice for each configuration
+        if key == 'calc_connect':
+            timer = np.sum(np.array(timer).reshape((-1, 2)), axis=1)
+        job.doc['{:s}_{:s}_time_peratom_mean'.format(timing_key, key)] = np.mean(
+            np.array(timer) / natoms_list)
+        job.doc['{:s}_{:s}_time_peratom_min'.format(timing_key, key)] = np.min(
+            np.array(timer) / natoms_list)
+        job.doc['{:s}_{:s}_time_peratom_max'.format(timing_key, key)] = np.max(
+            np.array(timer) / natoms_list)
+        job.doc['{:s}_{:s}_time_peratom_std'.format(timing_key, key)] = np.std(
+            np.array(timer) / natoms_list)
+
+
+@FlowProject.operation
+@FlowProject.pre(has_energy_output)
+@FlowProject.post(has_energy_timings)
+def process_energy_timings(job):
+    timing_data = parse_quip_timings(job, 'energies_output.out')
+    store_timing_data(job, timing_data, 'energy')
+
+
+@FlowProject.operation
+@FlowProject.pre(has_force_output)
+@FlowProject.post(has_force_timings)
+def process_force_timings(job):
+    timing_data = parse_quip_timings(job, 'forces_output.out')
+    store_timing_data(job, timing_data, 'force')
 
 
 if __name__ == "__main__":
