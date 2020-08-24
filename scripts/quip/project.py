@@ -1,8 +1,9 @@
 """Run QUIP benchmarks"""
 
-import os
 import errno
 import logging
+import os
+import re
 import subprocess
 
 import numpy as np
@@ -12,7 +13,6 @@ from flow import FlowProject, directives
 
 
 LOGGER = logging.getLogger(__name__)
-LOGGER.basicConfig()
 
 
 class HelvetiosEnvironment(flow.environment.DefaultSlurmEnvironment):
@@ -117,6 +117,8 @@ def has_libatoms_exit_message(filename):
     # Warning: Potential race condition(s)
     # (also implicitly assuming UTF-8 encoding)
     fsize = os.stat(filename).st_size
+    if fsize < len(fileend):
+        return False
     with open(filename, 'r') as outfile:
         outfile.seek(fsize - len(fileend))
         return (outfile.read(len(fileend)) == fileend)
@@ -127,7 +129,7 @@ def has_energy_output(job):
     if not job.isfile(outfile_name):
         return False
     else:
-        return has_libatoms_exit_message(job, job.fn(outfile_name))
+        return has_libatoms_exit_message(job.fn(outfile_name))
 
 
 def has_force_output(job):
@@ -135,9 +137,13 @@ def has_force_output(job):
     if not job.isfile(outfile_name):
         return False
     else:
-        return has_libatoms_exit_message(job, job.fn(outfile_name))
+        return has_libatoms_exit_message(job.fn(outfile_name))
 
 
+timings = FlowProject.make_group(name='timings')
+
+
+@timings
 @FlowProject.operation
 @FlowProject.pre(gap_fit_success)
 @FlowProject.post(has_energy_output)
@@ -154,6 +160,7 @@ def time_quip_energies(job):
         os.chdir(old_dir)
 
 
+@timings
 @FlowProject.operation
 @FlowProject.pre(gap_fit_success)
 @FlowProject.post(has_force_output)
@@ -219,7 +226,7 @@ def parse_quip_timings(job, filename):
                 number=len(time_list),
                 time_type=time_name,
                 filename=job.fn(filename)
-            )
+            ))
     return {'natoms': np.array(natoms_list),
             'calc_connect': np.array(connect_timer),
             'soap': np.array(soap_timer),
@@ -230,7 +237,7 @@ def parse_quip_timings(job, filename):
 def store_timing_data(job, data, timing_key):
     """Store QUIP timing data and compute summary statistics"""
     for key, timer in data.items():
-        datakey = '_'.join(timing_key, key)
+        datakey = '_'.join((timing_key, key))
         job.data[datakey] = timer
     natoms_list = data['natoms']
     del data['natoms']
@@ -265,4 +272,5 @@ def process_force_timings(job):
 
 
 if __name__ == "__main__":
+    logging.basicConfig()
     FlowProject().main()
