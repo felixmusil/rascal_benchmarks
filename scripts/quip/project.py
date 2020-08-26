@@ -215,23 +215,23 @@ def parse_quip_timings(job, filename):
         LOGGER.warning("Could not find index file {:s}".format(xyz_index_file))
     error_message = ("Wrong number {number:d} of {time_type:s} timings in file"
                      " {filename:s}")
-    if len(connect_timer) != 2*n_configs:
-        raise ValueError(error_message.format(number=len(connect_timer),
-                                              time_type='calc_connect',
-                                              filename=job.fn(filename)))
-    for time_list, time_name in zip((soap_timer, gap_timer, ip_timer),
-                                    ('soap_calc', 'gap_calc', 'IP_calc')):
-        if len(time_list) != n_configs:
+    timers = (connect_timer, soap_timer, gap_timer, ip_timer)
+    labels = ('calc_connect', 'soap', 'gap', 'ip_total')
+    n_soaps = len(job.doc['global_species'])
+    multiplicities = (2, n_soaps, n_soaps, 1)
+    timings_out = {'natoms': np.array(natoms_list)}
+    for time_list, time_name, multiplicity in zip(
+            timers, labels, multiplicities):
+        if len(time_list) != multiplicity*n_configs:
             raise ValueError(error_message.format(
                 number=len(time_list),
                 time_type=time_name,
                 filename=job.fn(filename)
             ))
-    return {'natoms': np.array(natoms_list),
-            'calc_connect': np.array(connect_timer),
-            'soap': np.array(soap_timer),
-            'gap': np.array(gap_timer),
-            'ip_total': np.array(ip_timer)}
+        else:
+            timings_out[time_name] = np.array(time_list).reshape(
+                                                (-1, multiplicity))
+    return timings_out
 
 
 def store_timing_data(job, data, timing_key):
@@ -242,9 +242,7 @@ def store_timing_data(job, data, timing_key):
     natoms_list = data['natoms']
     del data['natoms']
     for key, timer in data.items():
-        # Assuming calc_connect is called twice for each configuration
-        if key == 'calc_connect':
-            timer = np.sum(np.array(timer).reshape((-1, 2)), axis=1)
+        timer = np.sum(timer, axis=1)
         job.doc['{:s}_{:s}_time_peratom_mean'.format(timing_key, key)] = np.mean(
             np.array(timer) / natoms_list)
         job.doc['{:s}_{:s}_time_peratom_min'.format(timing_key, key)] = np.min(
