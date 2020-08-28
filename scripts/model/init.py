@@ -63,14 +63,7 @@ global_species = {
     'methane_sulfonic' : [1,6,8,16],
 }
 
-# sparse_point_subselections = {
-#     'silicon_bulk' : [dict(Nselect={14:v}, act_on='sample per species', seed=seed) for v in [100, 200, 500, 1000, 2000, 5000, 9000]]
-# }
-
-# feature_subselections = {
-#     'silicon_bulk' : [dict(Nselect=int(1300*v), act_on='feature', seed=seed) for v in [0.01, 0.05, 0.1, 0.2, 0.5, 0.7, 1]]+[dict(Nselect=None, act_on='feature', seed=seed)]
-# }
-n_sparse = [100, 200, 500, 1000, 2000, 5000, 9000]
+n_sparse = [100, 200, 500, 1000, 2000, 5000, 7000, 9000]
 sparse_point_subselections = {
     'qm9' : [dict(Nselect={1:int(v/5),6:int(v/5),7:int(v/5),8:int(v/5),9:int(v/5)}, act_on='sample per species', seed=seed) for v in n_sparse],
     'molecular_crystals' : [dict(Nselect={1:int(v/4),6:int(v/4),7:int(v/4),8:int(v/4)}, act_on='sample per species', seed=seed) for v in n_sparse],
@@ -111,14 +104,14 @@ models = {
          'representation' :
             dict(
             interaction_cutoff=5., cutoff_smooth_width=.5,
-            max_radial=10, max_angular=12, gaussian_sigma_type="Constant",
+            max_radial=12, max_angular=9, gaussian_sigma_type="Constant",
             soap_type="PowerSpectrum",
             normalize=True,
             expansion_by_species_method='structure wise',
             global_species=global_species['qm9'],
             compute_gradients=False,
-            cutoff_function_parameters=dict(),
-            cutoff_function_type="ShiftedCosine",
+            cutoff_function_parameters=dict(rate = 1, scale = 2, exponent = 7),
+            cutoff_function_type="RadialScaling",
             gaussian_sigma_constant=0.3,
             coefficient_subselection=None,
             radial_basis="GTO",
@@ -137,7 +130,7 @@ models = {
          'representation' :
             dict(
             interaction_cutoff=5., cutoff_smooth_width=.5,
-            max_radial=10, max_angular=12, gaussian_sigma_type="Constant",
+            max_radial=9, max_angular=9, gaussian_sigma_type="Constant",
             soap_type="PowerSpectrum",
             normalize=True,
             expansion_by_species_method='structure wise',
@@ -162,8 +155,8 @@ models = {
         {
          'representation' :
             dict(
-            interaction_cutoff=5., cutoff_smooth_width=.5,
-            max_radial=10, max_angular=12, gaussian_sigma_type="Constant",
+            interaction_cutoff=4, cutoff_smooth_width=.5,
+            max_radial=8, max_angular=6, gaussian_sigma_type="Constant",
             soap_type="PowerSpectrum",
             normalize=True,
             expansion_by_species_method='structure wise',
@@ -188,8 +181,8 @@ models = {
         {
          'representation' :
             dict(
-            interaction_cutoff=5., cutoff_smooth_width=.5,
-            max_radial=10, max_angular=12, gaussian_sigma_type="Constant",
+            interaction_cutoff=4., cutoff_smooth_width=.5,
+            max_radial=8, max_angular=6, gaussian_sigma_type="Constant",
             soap_type="PowerSpectrum",
             normalize=True,
             expansion_by_species_method='structure wise',
@@ -227,7 +220,6 @@ self_contributions = {
     'methane_liquid': {1: 0, 6: 0},
     'methane_sulfonic': {1: -0.6645519125911715, 6: -5.654232251386078, 8: -15.852522852103935, 16: -9.17258361289801}
 }
-
 
 for name in names:
     for model, sparse_point_subselection, feature_subselection in product(models[name], sparse_point_subselections[name], feature_subselections[name]):

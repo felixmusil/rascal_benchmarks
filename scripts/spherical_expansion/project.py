@@ -4,6 +4,7 @@ from subprocess import Popen, PIPE
 from os.path import join,dirname
 from copy import deepcopy
 from memory_profiler import memory_usage
+from time import ctime
 
 import sys, os
 
@@ -63,4 +64,6 @@ def store_se_cpp_in_document(job):
 
 
 if __name__ == '__main__':
+    print(ctime())
     FlowProject().main()
+    print(ctime())

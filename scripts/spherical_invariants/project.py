@@ -7,6 +7,7 @@ from memory_profiler import memory_usage
 from ase.io import read
 import sys, os
 import numpy as np
+from time import ctime
 
 sys.path.insert(0, join(dirname(__file__), '../'))
 from path import STRUCTURE_PATH, RASCAL_BUILD_PATH, BUILD_PATH
@@ -104,4 +105,6 @@ def store_si_cpp_in_document(job):
 
 
 if __name__ == '__main__':
+    print(ctime())
     FlowProject().main()
+    print(ctime())

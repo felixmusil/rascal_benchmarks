@@ -6,7 +6,7 @@ from path import STRUCTURE_PATH, RASCAL_BUILD_PATH, BUILD_PATH
 # Define parameter space
 fns = {
     'qm9': 'qm9.json',
-    'molecular_crystals': 'molecular_crystals.json',
+    'molecular_crystals': 'molecular_crystals_50.json',
     'silicon_bulk': 'silicon_bulk.json',
     'methane_liquid': 'methane_liquid.json',
     'methane_sulfonic': 'methane_sulfonic_150.json'
@@ -65,7 +65,7 @@ radial_basis_args = {
     'DVR_Spline' : {
             'radial_basis': 'DVR',
             'optimization_args':{
-                'type': 'Spline', 'accuracy': 1e-8, 'range': [0,0]
+                'type': 'Spline', 'accuracy': 1e-8, 'range': [1e-6,0]
             }
     }
 }
