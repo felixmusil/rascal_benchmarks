@@ -78,6 +78,8 @@ gap_fit_params_fixed['qm9']['n_max'] = 12
 gap_fit_params_fixed['qm9']['l_max'] = 9
 gap_fit_params_fixed['molecular_crystals']['n_max'] = 9
 gap_fit_params_fixed['molecular_crystals']['l_max'] = 9
+gap_fit_params_fixed['methane_sulfonic']['n_max'] = 8
+gap_fit_params_fixed['methane_sulfonic']['l_max'] = 6
 
 n_sparse_all = [100, 200, 500, 1000, 2000, 5000, 9000]
 
