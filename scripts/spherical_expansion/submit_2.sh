@@ -9,4 +9,4 @@
 
 conda activate rascal_benchmark
 
-python project.py run -f name silicon_bulk --parallel 10 --order random  2>&1 | tee status_2.txt
+python project.py run -f name silicon_bulk --parallel 10 --progress --order random  2>&1 | tee status_2.txt

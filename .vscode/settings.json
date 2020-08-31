@@ -66,5 +66,5 @@
     "string": "cpp",
     "variant": "cpp"
   },
-  "python.pythonPath": "/local/ssd/miniconda/envs/rascal_benchmark/bin/python"
+  "python.pythonPath": "/home/musil/miniconda/envs/rascal_benchmark/bin/python"
 }
