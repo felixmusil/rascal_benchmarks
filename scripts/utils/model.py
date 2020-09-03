@@ -2,7 +2,7 @@
 import numpy as np
 import sys
 from os.path import join,dirname
-
+import ase
 
 sys.path.insert(0, join(dirname(__file__), '../'))
 from path import STRUCTURE_PATH, RASCAL_BUILD_PATH, BUILD_PATH
@@ -252,7 +252,8 @@ class KRR(BaseIO):
         if KNM is not None: # if the KNM matrix is provided
             kernel = KNM
         else: # if the representation is provided
-            kernel = self.kernel(managers, self.X_train, (compute_gradients, False), compute_stress)
+            kernel = self.kernel(managers, self.X_train, (compute_gradients, False))
+            # kernel = self.kernel(managers, self.X_train, (compute_gradients, False), compute_stress)
         Y0 = self._get_property_baseline(managers)
         return kernel, Y0
 
