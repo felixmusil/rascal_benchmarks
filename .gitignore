@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 results/*
 # C extensions
+*.png
 *.so
 *slurm-*.out
 *workspace
