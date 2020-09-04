@@ -103,7 +103,7 @@ models = {
         {
          'representation' :
             dict(
-            interaction_cutoff=5., cutoff_smooth_width=.5,
+            interaction_cutoff=5., cutoff_smooth_width=1.,
             max_radial=12, max_angular=9, gaussian_sigma_type="Constant",
             soap_type="PowerSpectrum",
             normalize=True,
@@ -129,7 +129,7 @@ models = {
         {
          'representation' :
             dict(
-            interaction_cutoff=5., cutoff_smooth_width=.5,
+            interaction_cutoff=5., cutoff_smooth_width=1.,
             max_radial=9, max_angular=9, gaussian_sigma_type="Constant",
             soap_type="PowerSpectrum",
             normalize=True,
@@ -155,7 +155,7 @@ models = {
         {
          'representation' :
             dict(
-            interaction_cutoff=4, cutoff_smooth_width=.5,
+            interaction_cutoff=5, cutoff_smooth_width=1.,
             max_radial=8, max_angular=6, gaussian_sigma_type="Constant",
             soap_type="PowerSpectrum",
             normalize=True,
@@ -181,7 +181,7 @@ models = {
         {
          'representation' :
             dict(
-            interaction_cutoff=4., cutoff_smooth_width=.5,
+            interaction_cutoff=5., cutoff_smooth_width=1.,
             max_radial=8, max_angular=6, gaussian_sigma_type="Constant",
             soap_type="PowerSpectrum",
             normalize=True,
@@ -205,12 +205,12 @@ models = {
     ],
 }
 
-f_feature = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 0.7]
+f_feature = [0.02, 0.05, 0.1, 0.2,0.4, 0.5, 0.7, 1]
 feature_subselections = {}
 for name,dd in models.items():
     aa = dd[0]['representation']
-    # number of PowerSpectrum features
-    n_feat = int(aa['max_radial']**2 * (aa['max_angular']+1) * len(global_species[name])*(len(global_species[name])+1) /2)
+    # number of PowerSpectrum features in QUIP
+    n_feat = int((aa['max_angular']+1) * aa['max_radial']*len(global_species[name])*(aa['max_radial']*len(global_species[name])+1) /2)
     feature_subselections[name] = [dict(Nselect=int(v*n_feat), act_on='feature', seed=seed) for v in f_feature]+[dict(Nselect=None, act_on='feature', seed=seed)]
 
 self_contributions = {
@@ -221,13 +221,16 @@ self_contributions = {
     'methane_sulfonic': {1: -0.6645519125911715, 6: -5.654232251386078, 8: -15.852522852103935, 16: -9.17258361289801}
 }
 
+grads_timings = [True, False]
+
 for name in names:
-    for model, sparse_point_subselection, feature_subselection in product(models[name], sparse_point_subselections[name], feature_subselections[name]):
+    for model, sparse_point_subselection, feature_subselection, grads_timing in product(models[name], sparse_point_subselections[name], feature_subselections[name], grads_timings):
         rep_args = deepcopy(model)
         rep_args['name'] = name
         rep_args['filename'] = join(STRUCTURE_PATH,fns[name])
         rep_args['self_contributions'] = self_contributions[name]
         rep_args['train_with_grad'] = False
+        rep_args['grads_timing'] = grads_timing
         rep_args['sparse_point_subselection'] = sparse_point_subselection
         rep_args['feature_subselection'] = feature_subselection
         rep_args.update(misc_entries[name])
