@@ -47,6 +47,14 @@ global_species = {
     'methane_sulfonic' : [1,6,8,16],
 }
 
+test_subsets = {
+    'qm9': (0, 800),
+    'molecular_crystals': (0, 90),
+    'silicon_bulk': (600, 120),
+    'methane_liquid': (100, 100),
+    'methane_sulfonic': (0, 50)
+}
+
 gap_fit_params_default = {
     'cutoff': 5.0,
     'cutoff_transition_width': 1.0,
@@ -109,4 +117,5 @@ for (system_name, param_set), n_sparse, nl_set, use_forces in itertools.product(
     else:
         job.doc['force_key'] = 'none'
     job.doc['global_species'] = global_species[system_name]
+    job.doc['test_subset'] = test_subsets[system_name]
 

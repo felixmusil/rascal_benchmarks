@@ -251,11 +251,23 @@ def store_timing_data(job, data, timing_key):
             np.array(timer) / natoms_list)
         job.doc['{:s}_{:s}_time_peratom_std'.format(timing_key, key)] = np.std(
             np.array(timer) / natoms_list)
+        thesubset = slice(job.doc.test_subset[0],
+                          job.doc.test_subset[0] + job.doc.test_subset[1])
+        timer_sub = timer[thesubset]
+        job.doc['{:s}_{:s}_timesub_peratom_mean'.format(timing_key, key)] = np.mean(
+            timer_sub / natoms_list[thesubset])
+        job.doc['{:s}_{:s}_timesub_peratom_min'.format(timing_key, key)] = np.min(
+            timer_sub / natoms_list[thesubset])
+        job.doc['{:s}_{:s}_timesub_peratom_max'.format(timing_key, key)] = np.max(
+            timer_sub / natoms_list[thesubset])
+        job.doc['{:s}_{:s}_timesub_peratom_std'.format(timing_key, key)] = np.std(
+            timer_sub / natoms_list[thesubset])
 
 
 @FlowProject.operation
 @FlowProject.pre(has_energy_output)
 @FlowProject.post(has_energy_timings)
+@FlowProject.post.never
 def process_energy_timings(job):
     timing_data = parse_quip_timings(job, 'energies_output.out')
     store_timing_data(job, timing_data, 'energy')
@@ -264,6 +276,7 @@ def process_energy_timings(job):
 @FlowProject.operation
 @FlowProject.pre(has_force_output)
 @FlowProject.post(has_force_timings)
+@FlowProject.post.never
 def process_force_timings(job):
     timing_data = parse_quip_timings(job, 'forces_output.out')
     store_timing_data(job, timing_data, 'force')
