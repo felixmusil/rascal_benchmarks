@@ -72,6 +72,23 @@ nl_sets = [
     {'n_max': 8, 'l_max': 6}
 ]
 
+nl_base = {'n_max': 8, 'l_max': 7}
+ns = range(2,16,2)
+ls = range(1,16,2)
+nl_sweeps = []
+# Just do a cross-sectional sample instead of a full Cartesian grid
+# and let signac handle the de-duplication of the base point
+for n_max in ns:
+    nl_params = nl_base.copy()
+    nl_params['n_max'] = n_max
+    nl_sweeps.append(nl_params)
+for l_max in ls:
+    nl_params = nl_base.copy()
+    nl_params['l_max'] = l_max
+    nl_sweeps.append(nl_params)
+
+
+
 do_train_with_forces = [True, False]
 
 gap_fit_params_fixed = {name: gap_fit_params_default.copy()
@@ -91,6 +108,18 @@ gap_fit_params_fixed['methane_sulfonic']['l_max'] = 6
 
 n_sparse_all = [100, 200, 500, 1000, 2000, 5000, 9000]
 
+def populate_job(job, system_name):
+    """Fill out metadata that is system-specific, but doesn't define a state point"""
+    job.doc['system_sourcefile'] = system_filenames[system_name]
+    job.doc['atoms_filename'] = os.path.basename(system_filenames[system_name])
+    job.doc['energy_key'] = system_energy_keys[system_name]
+    if use_forces:
+        job.doc['force_key'] = system_force_keys[system_name]
+    else:
+        job.doc['force_key'] = 'none'
+    job.doc['global_species'] = global_species[system_name]
+    job.doc['test_subset'] = test_subsets[system_name]
+
 for (system_name, param_set), n_sparse, nl_set, use_forces in itertools.product(
         gap_fit_params_fixed.items(), n_sparse_all, nl_sets, do_train_with_forces):
     param_set['system_name'] = system_name
@@ -108,14 +137,13 @@ for (system_name, param_set), n_sparse, nl_set, use_forces in itertools.product(
             continue
     job = project.open_job(param_set)
     job.init()
-    # Metadata that is system-specific, but doesn't define a state point
-    job.doc['system_sourcefile'] = system_filenames[system_name]
-    job.doc['atoms_filename'] = os.path.basename(system_filenames[system_name])
-    job.doc['energy_key'] = system_energy_keys[system_name]
-    if use_forces:
-        job.doc['force_key'] = system_force_keys[system_name]
-    else:
-        job.doc['force_key'] = 'none'
-    job.doc['global_species'] = global_species[system_name]
-    job.doc['test_subset'] = test_subsets[system_name]
+    populate_job(job, system_name)
+    nl_sweep_systems = ['methane_liquid', 'silicon_bulk', 'methane_sulfonic']
+    if system_name in nl_sweep_systems:
+        for nl_set in nl_sweeps:
+            param_set['n_max'] = nl_set['n_max']
+            param_set['l_max'] = nl_set['l_max']
+            job = project.open_job(param_set)
+            job.init()
+            populate_job(job, system_name)
 
