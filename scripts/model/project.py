@@ -20,6 +20,7 @@ from rascal.representations import SphericalInvariants, SphericalExpansion
 from rascal.representations.spherical_invariants import get_power_spectrum_index_mapping
 from rascal.representations import SphericalInvariants
 from rascal.models import Kernel, train_gap_model, SparsePoints, KRR
+from rascal.models.krr import compute_forces
 from rascal.neighbourlist import AtomsList
 from rascal.utils import from_dict, CURFilter, fps, to_dict
 from rascal.utils.random_filter import RandomFilter
@@ -314,8 +315,8 @@ def compute_benchmark(job):
                 Y0 + np.dot(KNM, model.weights).reshape((-1))
             sleep(0.1)
             with timers['pred forces']:
-                KNM = kernel(managers, model.X_train, (True, False))
-                np.dot(KNM, model.weights).reshape((-1, 3))
+                rep = model.kernel._representation
+                forces = compute_forces(rep, model.kernel._kernel, managers.managers, model.X_train._sparse_points, model.weights.reshape((1, -1)))
             sleep(0.1)
             managers, KNM = [], []
             del managers, KNM
@@ -333,7 +334,7 @@ def compute_benchmark(job):
                 KNM = kernel(managers, model.X_train, (False, False))
                 Y0 + np.dot(KNM, model.weights).reshape((-1))
             sleep(0.1)
-            
+
             managers, KNM = [], []
             del managers, KNM
             sleep(0.3)
