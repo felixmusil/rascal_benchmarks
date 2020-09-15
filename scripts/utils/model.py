@@ -22,175 +22,6 @@ from tqdm import tqdm
 
 from .io import fromfile, tofile
 
-from concurrent.futures import as_completed, ProcessPoolExecutor, ThreadPoolExecutor
-
-
-def init_proc(sparse_points_fn, zeta):
-    global X_pseudo
-    global soap_nograd,soap_grad
-    global kernel_grad,kernel_nograd
-    # compute_gradient = True
-    # zeta = 4
-    # sparse_points_fn = sp_fn
-    X_pseudo = load_obj(sparse_points_fn)
-    hypers = X_pseudo.representation._get_init_params()
-    hypers['compute_gradients'] = False
-    soap_nograd = SphericalInvariants(**hypers)
-    hypers['compute_gradients'] = True
-    soap_grad = SphericalInvariants(**hypers)
-    kernel_grad = Kernel(soap_grad, name='GAP', zeta=zeta, target_type='Structure', kernel_type='Sparse')
-    kernel_nograd = Kernel(soap_nograd, name='GAP', zeta=zeta, target_type='Structure', kernel_type='Sparse')
-
-def compute_gap(frame, compute_gradient, compute_stress, zeta):
-    if compute_gradient:
-        feat = soap_grad.transform([frame])
-        en_row = kernel_grad(feat, X_pseudo)
-    else:
-        feat = soap_nograd.transform([frame])
-        en_row = kernel_nograd(feat, X_pseudo)
-    grad_rows = None
-    virial_rows = None
-    # if compute_gradient and compute_stress:
-    #     grad_rows = kernel_grad(feat, X_pseudo, grad=(True, False), compute_stress=True)
-    #     virial_rows = grad_rows[-6:]
-    #     grad_rows = grad_rows[:-6]
-    if compute_gradient and not compute_stress:
-        # grad_rows = kernel_grad(feat, X_pseudo, grad=(True, False), compute_stress=False)
-        grad_rows = kernel_grad(feat, X_pseudo, grad=(True, False))
-    feat = []
-    return en_row, grad_rows, virial_rows
-
-
-class KnmPool(object):
-    def __init__(self, ncpu=1, energy_tag=None, forces_tag=None, stress_tag=None):
-        self.ncpu = ncpu
-        self.energy_tag = energy_tag
-        self.forces_tag = forces_tag
-        self.stress_tag = stress_tag
-
-        if self.energy_tag is None:
-            raise ValueError('energy_tag should be provided')
-
-    def prepare_run(self,frames,self_contributions,n_sparse,n_frames,n_stress):
-        self.Y0 = np.zeros((n_frames,1))
-        self.n_atoms = np.zeros((n_frames,1))
-        self.n_atoms_v = []
-        self.compute_gradient = []
-        self.compute_virial = []
-        self.energies = []
-        self.forces = []
-        self.stress = []
-        self.n_grad_stride = [0]
-        self.n_virial_stride = [0]
-        self.frame_ids = {'energy':[],'forces':[],'stress':[]}
-        for i_frame, frame in enumerate(frames):
-            numbers = frame.get_atomic_numbers()
-            self.n_atoms[i_frame] = len(frame)
-
-            for sp in numbers:
-                self.Y0[i_frame] += self_contributions[sp]
-
-            if self.energy_tag not in frame.info:
-                raise ValueError(
-                    'Could not find: "{}" in frame {}'.format(self.energy_tag, i_frame))
-
-            self.energies.append(frame.info[self.energy_tag])
-            self.frame_ids['energy'].append(i_frame)
-            if self.forces_tag in frame.arrays:
-                self.compute_gradient.append(True)
-                self.forces.extend(frame.get_array(self.forces_tag).flatten()[:, None])
-                self.n_grad_stride.append(len(frame)*3)
-                self.frame_ids['forces'].append(i_frame)
-                if self.stress_tag in frame.info:
-                    self.compute_virial.append(True)
-                    stress = -frame.get_volume()* full_3x3_to_voigt_6_stress(frame.info[self.stress_tag])
-                    self.stress.extend(stress.reshape((n_stress, 1)))
-                    self.n_virial_stride.append(n_stress)
-                    self.n_atoms_v.extend([len(frame)]*n_stress)
-                    self.frame_ids['stress'].append(i_frame)
-                else:
-                    self.compute_virial.append(False)
-                    self.n_virial_stride.append(0)
-
-            else:
-                self.compute_gradient.append(False)
-                self.n_grad_stride.append(0)
-
-        self.n_grad_stride = np.cumsum(self.n_grad_stride)
-        self.n_virial_stride = np.cumsum(self.n_virial_stride)
-
-        self.energies = np.asarray(self.energies)[:,None]-self.Y0
-        self.grads = -np.asarray(self.forces)
-        self.m_virials = -np.asarray(self.stress)
-        self.n_atoms_v = np.asarray(self.n_atoms_v).reshape((-1,1))
-
-    def run(self, frames, zeta, sparse_points_fn, self_contributions):
-        X_pseudo = load_obj(sparse_points_fn)
-        n_sparse = X_pseudo.size()
-        n_frames = len(frames)
-        n_stress = 6
-        self.prepare_run(frames,self_contributions,n_sparse,n_frames,n_stress)
-
-        KNM_e = np.ones((n_frames, n_sparse))
-        if self.forces_tag is not None:
-            KNM_f = np.ones((self.n_grad_stride[-1], n_sparse))
-        if self.stress_tag is not None:
-            KNM_v = np.ones((self.n_virial_stride[-1], n_sparse))
-        # compute_gradient = True
-        with ThreadPoolExecutor(max_workers=self.ncpu, initializer=init_proc,
-                                 initargs=(sparse_points_fn, zeta)) as executor:
-            future_to_compute = {executor.submit(
-                        compute_gap, frame, compute_gradient, compute_virial, zeta) : i_frame
-                        for i_frame,(frame, compute_gradient, compute_virial) in enumerate(zip(
-                                                    frames, self.compute_gradient, self.compute_virial))}
-            pbar = tqdm(total=len(future_to_compute),leave=False, desc='KNM')
-            for future in as_completed(future_to_compute):
-                i_frame = future_to_compute[future]
-                en_row, grad_rows, virial_rows = future.result()
-                KNM_e[i_frame] = en_row
-                if grad_rows is not None:
-                    KNM_f[self.n_grad_stride[i_frame]:self.n_grad_stride[i_frame+1]] = grad_rows
-                if virial_rows is not None:
-                    KNM_v[self.n_virial_stride[i_frame]:self.n_virial_stride[i_frame+1]] = virial_rows
-
-                pbar.update()
-        result = {'energy':{'KNM':KNM_e, 'y':self.energies, 'n_atoms':self.n_atoms}}
-        if self.forces_tag is not None:
-            result['grads'] = {'KNM':KNM_f, 'y':self.grads}
-        if self.stress_tag is not None:
-            result['stress'] = {'KNM':KNM_v, 'y':self.m_virials, 'n_atoms':self.n_atoms_v}
-        return result
-
-    def srun(self, frames, zeta, sparse_points_fn, self_contributions):
-        init_proc(sparse_points_fn, zeta)
-        global X_pseudo
-        X_pseudo = load_obj(sparse_points_fn)
-        n_sparse = X_pseudo.size()
-        n_frames = len(frames)
-        n_stress = 6
-        self.prepare_run(frames,self_contributions,n_sparse,n_frames,n_stress)
-
-        KNM_e = np.ones((n_frames, n_sparse))
-        if self.forces_tag is not None:
-            KNM_f = np.ones((self.n_grad_stride[-1], n_sparse))
-        if self.stress_tag is not None:
-            KNM_v = np.ones((self.n_virial_stride[-1], n_sparse))
-        pbar = tqdm(total=n_frames,leave=False, desc='KNM')
-        for i_frame, frame in enumerate(frames):
-            en_row, grad_rows, virial_rows = compute_gap(frame, self.compute_gradient[i_frame],
-                                                         self.compute_virial[i_frame], zeta)
-            KNM_e[i_frame] = en_row
-            if grad_rows is not None:
-                KNM_f[self.n_grad_stride[i_frame]:self.n_grad_stride[i_frame+1]] = grad_rows
-            if virial_rows is not None:
-                KNM_v[self.n_virial_stride[i_frame]:self.n_virial_stride[i_frame+1]] = virial_rows
-            pbar.update()
-        result = {'energy':{'KNM':KNM_e, 'y':self.energies, 'n_atoms':self.n_atoms}}
-        if self.forces_tag is not None:
-            result['grads'] = {'KNM':KNM_f, 'y':self.grads}
-        if self.stress_tag is not None:
-            result['stress'] = {'KNM':KNM_v, 'y':self.m_virials, 'n_atoms':self.n_atoms_v}
-        return result
 
 class KRR(BaseIO):
     """Kernel Ridge Regression model. Only compatible fully with sparse GPR
@@ -252,8 +83,7 @@ class KRR(BaseIO):
         if KNM is not None: # if the KNM matrix is provided
             kernel = KNM
         else: # if the representation is provided
-            kernel = self.kernel(managers, self.X_train, (compute_gradients, False))
-            # kernel = self.kernel(managers, self.X_train, (compute_gradients, False), compute_stress)
+            kernel = self.kernel(managers, self.X_train, (compute_gradients, False),)
         Y0 = self._get_property_baseline(managers)
         return kernel, Y0
 
@@ -296,41 +126,143 @@ class KRR(BaseIO):
     def _get_data(self):
         return dict()
 
-def train_gap_model(kernel, X_pseudo, energy, self_contributions, grads=None, stress=None,
+def extract_ref(frames,info_key='energy',array_key='forces'):
+    y,f = [], []
+    for frame in frames:
+        y.append(frame.info[info_key])
+        if array_key is None:
+            pass
+        elif array_key == 'zeros':
+            f.append(np.zeros(frame.get_positions().shape))
+        else:
+            f.append(frame.get_array(array_key))
+    y= np.array(y)
+    try:
+        f = np.concatenate(f)
+    except:
+        pass
+    return y,f
+
+def get_grad_strides(frames):
+    Nstructures = len(frames)
+    Ngrad_stride = [0]
+    Ngrads = 0
+    n_atoms = []
+    for frame in frames:
+        n_at = len(frame)
+        n_atoms.append(n_at)
+        Ngrad_stride.append(n_at*3)
+        Ngrads += n_at*3
+    Ngrad_stride = np.cumsum(Ngrad_stride)
+    return np.array(n_atoms).reshape((-1,1)),Ngrad_stride
+
+def get_strides(frames):
+    Nstructures = len(frames)
+    Ngrad_stride = [0]
+    Ngrads = 0
+    for frame in frames:
+        n_at = len(frame)
+        Ngrad_stride.append(n_at*3)
+        Ngrads += n_at*3
+    Ngrad_stride = np.cumsum(Ngrad_stride) + Nstructures
+    return Nstructures,Ngrads,Ngrad_stride
+
+def _split_KNM(ids, frames, KNM, grad_strides):
+    Nstruct, Ngrad, _ = get_strides(frames)
+    KNM_ = np.zeros((Nstruct+Ngrad, KNM.shape[1]))
+    i_struct,i_grad = 0, Nstruct
+    for idx in ids:
+        KNM_[i_struct] = KNM[idx]
+        kk = KNM[grad_strides[idx]:grad_strides[idx+1]]
+        KNM_[i_grad:i_grad+kk.shape[0]] = kk
+        i_struct += 1
+        i_grad += kk.shape[0]
+    return KNM_
+
+def split_KNM(frames,KNM,train_ids, test_ids):
+    Nstruct, Ngrad, grad_strides = get_strides(frames)
+
+    frames_train = [frames[ii] for ii in train_ids]
+    frames_test = [frames[ii] for ii in test_ids]
+    y_train, f_train = extract_ref(frames_train,'dft_energy','dft_force')
+    y_test, f_test = extract_ref(frames_test,'dft_energy','dft_force')
+
+    KNM_train = _split_KNM(train_ids, frames_train, KNM, grad_strides)
+    KNM_test = _split_KNM(test_ids, frames_test, KNM, grad_strides)
+    return (frames_train, y_train, f_train, KNM_train), (frames_test, y_test, f_test, KNM_test)
+
+
+def train_gap_model_0(kernel, frames, KNM_, X_pseudo, y_train, self_contributions, grad_train=None,
                     lambdas=None, jitter=1e-8):
     KMM = kernel(X_pseudo)
-    Y_e = energy['y'].reshape((-1, 1))
-    KNM_e = energy['KNM']
-    Natoms = energy['n_atoms']
+    Y = y_train.reshape((-1, 1)).copy()
+    KNM = KNM_.copy()
+    n_centers = Y.shape[0]
+    Natoms = np.zeros(n_centers)
+    Y0 = np.zeros((n_centers, 1))
+    for iframe, frame in enumerate(frames):
+        Natoms[iframe] = len(frame)
+        numbers = frame.get_atomic_numbers()
+        for sp in numbers:
+            Y0[iframe] += self_contributions[sp]
+    Y = Y - Y0
+    delta = np.std(Y)
 
-    delta = np.std(Y_e)
-    # lambdas[0] is provided per atom hence the '* np.sqrt(Natoms)'
-    # the first n_centers rows of KNM are expected to refer to the
-    # property
-    reg = 1 / (lambdas[0] / delta * np.sqrt(Natoms))
-    Y = np.dot(KNM_e.T, Y_e * reg**2)
-    K = KMM + np.dot(KNM_e.T , KNM_e* reg**2)
+    KNM[:n_centers] /= lambdas[0] / delta * np.sqrt(Natoms)[:, None]
+    Y /= lambdas[0] / delta * np.sqrt(Natoms)[:, None]
 
-    if grads is not None:
-        reg = 1 / (lambdas[1] / delta)
-        Y_f = grads['y'].reshape((-1, 1))
-        KNM_f = grads['KNM']
-        Y += np.dot(KNM_f.T, Y_f* reg**2)
-        K += np.dot(KNM_f.T, KNM_f* reg**2)
-    if stress is not None:
-        n_atoms = stress['n_atoms'].copy()
-        reg = 1 / (lambdas[2] / delta * np.sqrt(n_atoms))
-        Y_v = stress['y'].reshape((-1, 1))
-        KNM_v = stress['KNM']
-        Y += np.dot(KNM_v.T, Y_v* reg**2)
-        K += np.dot(KNM_v.T, KNM_v* reg**2)
+    if grad_train is not None:
+        KNM[n_centers:] /= lambdas[1] / delta
+        F = grad_train.reshape((-1, 1)).copy()
+        F /= lambdas[1] / delta
+        Y = np.vstack([Y, F])
 
+    K = KMM + np.dot(KNM.T, KNM)
     eig,_ = np.linalg.eig(K)
-    print('jitter ',jitter, eig.min())
+    if eig.min() < 0:
+        jitter = 1.05*abs(eig.min())
+
+    # print('jitter ',jitter, eig.min())
     K[np.diag_indices_from(K)] += jitter
 
-    # weights = np.linalg.solve(K, Y)
+    Y = np.dot(KNM.T, Y)
     weights,_,_,_ = np.linalg.lstsq(K, Y, rcond=None)
     model = KRR(weights, kernel, X_pseudo, self_contributions)
 
+    # avoid memory clogging
+    del K, KMM
+    K, KMM = [], []
+
     return model
+
+
+def get_cv_scores(cv,KNM, frames, kernel, X_pseudo,self_contributions,lamda_es,lamda_fs,jitter=1e-7, **kwargs):
+    Natoms = []
+    y_baseline = []
+    for frame in frames:
+        Natoms.append(len(frame))
+        y_baseline.append(len(frame)*self_contributions[14])
+    Natoms = np.array(Natoms).reshape(-1)
+    y_baseline = np.array(y_baseline).reshape(-1)
+    n_atoms, grad_strides = get_grad_strides(frames)
+    scores = []
+    for train, val in tqdm(cv.split(np.ones((len(frames),1))), leave=False, total=cv.n_splits):
+        (frames_train, y_train, f_train, KNM_train), (frames_test,
+                                    y_test, f_test, KNM_test) = split_KNM(frames,KNM, train, val)
+        for lamda_e in tqdm(lamda_es,leave=False):
+            for lamda_f in tqdm(lamda_fs,leave=False):
+                if lamda_e>lamda_f: continue
+                model = train_gap_model_0(kernel, frames_train, KNM_train, X_pseudo, y_train, self_contributions,
+                        grad_train=-f_train, lambdas=[lamda_e,lamda_f], jitter=jitter)
+                frames_v = [frames[ids] for ids in val]
+                yp = model.predict(frames_v, KNM=KNM_test[:len(frames_test)])
+                fp = -model.predict(frames_v, KNM=KNM_test[len(frames_test):], compute_gradients=True)
+
+                en_score = get_score((yp.flatten()-y_baseline[val])/Natoms[val],
+                                     (y_test.flatten()-y_baseline[val])/Natoms[val])
+                score = {k+'_e':v for k,v in en_score.items()}
+                f_score = get_score(fp.flatten(), f_test.flatten())
+                score.update({k+'_f':v for k,v in f_score.items()})
+                score.update(lambda_e=lamda_e,lambda_f=lamda_f, **kwargs)
+                scores.append(score)
+    return scores

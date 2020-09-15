@@ -11,7 +11,8 @@ from path import STRUCTURE_PATH, RASCAL_BUILD_PATH, BUILD_PATH
 project = signac.init_project('train_model')
 # Define parameter space
 
-names = ['silicon_bulk']
+names = ['silicon_bulk','methane_liquid']
+names = ['methane_liquid']
 seed = 10
 fns = {
     'silicon_bulk': 'silicon_bulk.json',
@@ -27,6 +28,11 @@ misc_entries = {
          "n_structures" : 2474,
         # "n_structures" : 200,
     },
+    'methane_liquid' : {
+        'start_structure': 1,
+         "n_structures" : 20,
+        # "n_structures" : 258,
+    },
 }
 
 
@@ -41,11 +47,8 @@ global_species = {
 n_sparse = [100, 200, 500, 1000, 2000, 5000, 7000, 9000]
 # n_sparse = [200]
 sparse_point_subselections = {
-    'qm9' : [dict(Nselect={1:int(v/5),6:int(v/5),7:int(v/5),8:int(v/5),9:int(v/5)}, act_on='sample per species') for v in n_sparse],
-    'molecular_crystals' : [dict(Nselect={1:int(v/4),6:int(v/4),7:int(v/4),8:int(v/4)}, act_on='sample per species') for v in n_sparse],
-    'silicon_bulk' : [dict(Nselect={14:v}, act_on='sample per species') for v in n_sparse],
-    'methane_liquid' : [dict(Nselect={1:int(v/2),6:int(v/2)}, act_on='sample per species') for v in n_sparse],
-    'methane_sulfonic' : [dict(Nselect={1:int(v/4),6:int(v/4),8:int(v/4),16:int(v/4)}, act_on='sample per species') for v in n_sparse],
+    'silicon_bulk' : [{14:v} for v in n_sparse],
+    'methane_liquid' : [{1:int(v*0.8),6:int(v*0.2)} for v in n_sparse],
 }
 
 models = {
@@ -110,7 +113,7 @@ for name,dd in models.items():
     aa = dd[0]['representation']
     # number of PowerSpectrum features in QUIP
     n_feat = int((aa['max_angular']+1) * aa['max_radial']*len(global_species[name])*(aa['max_radial']*len(global_species[name])+1) /2)
-    feature_subselections[name] = [dict(Nselect=int(v*n_feat), act_on='feature') for v in f_feature]
+    feature_subselections[name] = [int(v*n_feat) for v in f_feature]
 
 self_contributions = {
     'silicon_bulk' : {14: -158.54496821},
@@ -119,18 +122,16 @@ self_contributions = {
     'methane_liquid': {1: 0, 6: 0},
     'methane_sulfonic': {1: -0.6645519125911715, 6: -5.654232251386078, 8: -15.852522852103935, 16: -9.17258361289801}
 }
-
-grads_timings = [True, False]
-
-for name in names:
-    for model, sparse_point_subselection, feature_subselection in product(models[name], sparse_point_subselections[name], feature_subselections[name]s):
-        rep_args = deepcopy(model)
-        rep_args['name'] = name
-        rep_args['filename'] = join(STRUCTURE_PATH,fns[name])
-        rep_args['self_contributions'] = self_contributions[name]
-        rep_args['train_with_grad'] = True
-        rep_args['sparse_point_subselection'] = sparse_point_subselection
-        rep_args['feature_subselection'] = feature_subselection
-        rep_args.update(misc_entries[name])
-        job = project.open_job(rep_args)
-        job.init()
+if __name__ == '__main__':
+    for name in names:
+        for model, sparse_point_subselection, feature_subselection in product(models[name], sparse_point_subselections[name], feature_subselections[name]):
+            rep_args = deepcopy(model)
+            rep_args['name'] = name
+            rep_args['filename'] = join(STRUCTURE_PATH,fns[name])
+            rep_args['self_contributions'] = self_contributions[name]
+            rep_args['train_with_grad'] = True
+            rep_args['sparse_point_subselection'] = sparse_point_subselection
+            rep_args['feature_subselection'] = feature_subselection
+            rep_args.update(misc_entries[name])
+            job = project.open_job(rep_args)
+            job.init()
