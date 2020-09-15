@@ -108,7 +108,7 @@ gap_fit_params_fixed['methane_sulfonic']['l_max'] = 6
 
 n_sparse_all = [100, 200, 500, 1000, 2000, 5000, 9000]
 
-def populate_job(job, system_name):
+def populate_job(job, system_name, use_forces=False):
     """Fill out metadata that is system-specific, but doesn't define a state point"""
     job.doc['system_sourcefile'] = system_filenames[system_name]
     job.doc['atoms_filename'] = os.path.basename(system_filenames[system_name])
@@ -137,7 +137,7 @@ for (system_name, param_set), n_sparse, nl_set, use_forces in itertools.product(
             continue
     job = project.open_job(param_set)
     job.init()
-    populate_job(job, system_name)
+    populate_job(job, system_name, use_forces)
     nl_sweep_systems = ['methane_liquid', 'silicon_bulk', 'methane_sulfonic']
     if system_name in nl_sweep_systems:
         for nl_set in nl_sweeps:
@@ -145,5 +145,5 @@ for (system_name, param_set), n_sparse, nl_set, use_forces in itertools.product(
             param_set['l_max'] = nl_set['l_max']
             job = project.open_job(param_set)
             job.init()
-            populate_job(job, system_name)
+            populate_job(job, system_name, use_forces)
 
