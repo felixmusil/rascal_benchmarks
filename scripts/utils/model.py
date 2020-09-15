@@ -12,6 +12,7 @@ from rascal.representations import SphericalInvariants, SphericalExpansion
 from rascal.representations.spherical_invariants import get_power_spectrum_index_mapping
 from rascal.representations import SphericalInvariants
 from rascal.models import Kernel, SparsePoints
+from rascal.models.krr import compute_forces
 from rascal.neighbourlist import AtomsList
 from rascal.utils import from_dict, CURFilter, FPSFilter, fps, to_dict
 from rascal.utils.random_filter import RandomFilter
@@ -275,12 +276,15 @@ class KRR(BaseIO):
         np.array
             predictions
         """
-        KNM, Y0 = self._preprocess_input(managers, KNM, compute_gradients, compute_stress)
+
         if compute_gradients is False:
-            return Y0 + np.dot(KNM, self.weights).reshape(-1)
+            KNM, Y0 = self._preprocess_input(managers, compute_gradients)
+            return Y0 + np.dot(KNM, self.weights).reshape((-1))
         else:
-            aa = np.dot(KNM, self.weights)
-            return np.dot(KNM, self.weights)
+            rep = self.kernel._representation
+            gradients = -compute_forces(rep, self.kernel._kernel, managers.managers, self.X_train._sparse_points, self.weights.reshape((1, -1)))
+
+            return gradients
 
     def get_weigths(self):
         return self.weights
