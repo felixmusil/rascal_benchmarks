@@ -1,5 +1,4 @@
 #!/bin/bash
-#SBATCH --chdir /scratch/musil/rascal_benchmarks/scripts/model
 #SBATCH --nodes 1
 #SBATCH --ntasks 1
 #SBATCH --cpus-per-task 3
@@ -8,5 +7,5 @@
 
 
 conda activate rascal_benchmark
-
+cd /scratch/musil/rascal_benchmarks/scripts/model
 python project.py run -f name methane_liquid --parallel 3 --progress --order random  2>&1 | tee status_3.txt

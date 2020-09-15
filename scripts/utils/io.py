@@ -4,6 +4,7 @@ import ubjson
 import os
 import ase
 import numpy as np
+import pickle
 
 def _decode(o):
     # JSON does not have integer keys so they are converted to string
@@ -19,6 +20,15 @@ def _decode(o):
     else:
         return o
 
+def topickle(fn, data):
+    with open(fn, 'wb') as f:
+        pickle.dump(data, f, protocol=4)
+
+def frompickle(fn):
+    with open(fn, 'rb') as f:
+        data = pickle.load(f)
+    return data
+    
 def tojson(fn, data):
     with open(fn, 'w') as f:
         data_pretty = prettyjson(data,indent=2, maxlinelength=80)

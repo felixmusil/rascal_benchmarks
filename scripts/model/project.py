@@ -272,9 +272,10 @@ def compute_benchmark(job):
 
     model = load_obj(job.fn(group['model_fn']))
     soap = model.get_representation_calculator()
+    grads_timing = job.sp.grads_timing
 
     hypers = soap._get_init_params()
-    hypers['compute_gradients'] = True
+    hypers['compute_gradients'] = grads_timing
     soap = SphericalInvariants(**hypers)
 
     rc = sp['representation']['interaction_cutoff']
@@ -289,35 +290,54 @@ def compute_benchmark(job):
     kernel = Kernel(soap, **sp['kernel'])
 
     N_ITERATIONS = sp['N_ITERATIONS']
-    tags = ['NL', 'rep with grad', 'pred energy', 'pred forces']
+    if grads_timing:
+        tags = ['NL', 'rep with grad', 'pred energy', 'pred forces']
+    else:
+        tags = ['NL', 'rep', 'pred energy']
+
     timers = {k:Timer(tag=k, logger=None) for k in tags}
     if job.sp.name != 'qm9':
         frames = [make_supercell(frames[0], job.sp.n_replication*np.eye(3), wrap=True, tol=1e-11)]
     else:
-        frames = frames[:50]
+        frames = frames[:100]
 
-    # for _ in tqdm(range(N_ITERATIONS), desc=job.sp.name, leave=True):
-    for ii in range(N_ITERATIONS):
-        with timers['NL']:
-            managers = AtomsList(frames, nl_options)
-        sleep(0.1)
-        with timers['rep with grad']:
-            managers = soap.transform(managers)
-        sleep(0.1)
-        Y0 = model._get_property_baseline(managers)
-        with timers['pred energy']:
-            KNM = kernel(managers, model.X_train, (False, False))
-            Y0 + np.dot(KNM, model.weights).reshape((-1))
-        sleep(0.1)
-        with timers['pred forces']:
-            rep = model.kernel._representation
-            forces = compute_forces(rep, model.kernel._kernel, managers.managers, model.X_train._sparse_points, model.weights.reshape((1, -1)))
+    if grads_timing:
+        for ii in range(N_ITERATIONS):
+            with timers['NL']:
+                managers = AtomsList(frames, nl_options)
+            sleep(0.1)
+            with timers['rep with grad']:
+                managers = soap.transform(managers)
+            sleep(0.1)
+            Y0 = model._get_property_baseline(managers)
+            with timers['pred energy']:
+                KNM = kernel(managers, model.X_train, (False, False))
+                Y0 + np.dot(KNM, model.weights).reshape((-1))
+            sleep(0.1)
+            with timers['pred forces']:
+                rep = model.kernel._representation
+                forces = compute_forces(rep, model.kernel._kernel, managers.managers, model.X_train._sparse_points, model.weights.reshape((1, -1)))
+            sleep(0.1)
+            managers, KNM = [], []
+            del managers, KNM
+            sleep(0.3)
+    else:
+        for ii in range(N_ITERATIONS):
+            with timers['NL']:
+                managers = AtomsList(frames, nl_options)
+            sleep(0.1)
+            with timers['rep']:
+                managers = soap.transform(managers)
+            sleep(0.1)
+            Y0 = model._get_property_baseline(managers)
+            with timers['pred energy']:
+                KNM = kernel(managers, model.X_train, (False, False))
+                Y0 + np.dot(KNM, model.weights).reshape((-1))
+            sleep(0.1)
 
-        sleep(0.1)
-        managers, KNM = [], []
-        del managers, KNM
-        sleep(0.3)
-        print(ctime(), job.sp.name, 100*(ii/N_ITERATIONS))
+            managers, KNM = [], []
+            del managers, KNM
+            sleep(0.3)
 
     n_atoms = 0
     for frame in frames:

@@ -41,11 +41,11 @@ global_species = {
 n_sparse = [100, 200, 500, 1000, 2000, 5000, 7000, 9000]
 # n_sparse = [200]
 sparse_point_subselections = {
-    'qm9' : [dict(Nselect={1:int(v/5),6:int(v/5),7:int(v/5),8:int(v/5),9:int(v/5)}, act_on='sample per species', seed=seed) for v in n_sparse],
-    'molecular_crystals' : [dict(Nselect={1:int(v/4),6:int(v/4),7:int(v/4),8:int(v/4)}, act_on='sample per species', seed=seed) for v in n_sparse],
-    'silicon_bulk' : [dict(Nselect={14:v}, act_on='sample per species', seed=seed) for v in n_sparse],
-    'methane_liquid' : [dict(Nselect={1:int(v/2),6:int(v/2)}, act_on='sample per species', seed=seed) for v in n_sparse],
-    'methane_sulfonic' : [dict(Nselect={1:int(v/4),6:int(v/4),8:int(v/4),16:int(v/4)}, act_on='sample per species', seed=seed) for v in n_sparse],
+    'qm9' : [dict(Nselect={1:int(v/5),6:int(v/5),7:int(v/5),8:int(v/5),9:int(v/5)}, act_on='sample per species') for v in n_sparse],
+    'molecular_crystals' : [dict(Nselect={1:int(v/4),6:int(v/4),7:int(v/4),8:int(v/4)}, act_on='sample per species') for v in n_sparse],
+    'silicon_bulk' : [dict(Nselect={14:v}, act_on='sample per species') for v in n_sparse],
+    'methane_liquid' : [dict(Nselect={1:int(v/2),6:int(v/2)}, act_on='sample per species') for v in n_sparse],
+    'methane_sulfonic' : [dict(Nselect={1:int(v/4),6:int(v/4),8:int(v/4),16:int(v/4)}, act_on='sample per species') for v in n_sparse],
 }
 
 models = {
@@ -74,18 +74,43 @@ models = {
                name='GAP', zeta=4, target_type='Structure', kernel_type='Sparse'
            ),
         },
-    ]
+    ],
+    'methane_liquid' : [
+        {
+         'representation' :
+            dict(
+            interaction_cutoff=5, cutoff_smooth_width=1.,
+            max_radial=8, max_angular=6, gaussian_sigma_type="Constant",
+            soap_type="PowerSpectrum",
+            normalize=True,
+            expansion_by_species_method='structure wise',
+            global_species=global_species['methane_liquid'],
+            compute_gradients=False,
+            cutoff_function_parameters=dict(),
+            cutoff_function_type="ShiftedCosine",
+            gaussian_sigma_constant=0.4,
+            coefficient_subselection=None,
+            radial_basis="GTO",
+            optimization_args={
+                  "type": "Spline", "accuracy": 1e-08, "range": [0, 5]
+                },
+            ),
+         'kernel':
+           dict(
+               name='GAP', zeta=2, target_type='Structure', kernel_type='Sparse'
+           ),
+        },
+    ],
 }
 
-f_feature = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 0.7]
-# f_feature = [0.02]
+f_feature = [0.02, 0.05, 0.1, 0.2,0.4, 0.5, 0.7, 1]
 
 feature_subselections = {}
 for name,dd in models.items():
     aa = dd[0]['representation']
-    # number of PowerSpectrum features
-    n_feat = int(aa['max_radial']**2 * (aa['max_angular']+1) * len(global_species[name])*(len(global_species[name])+1) /2)
-    feature_subselections[name] = [dict(Nselect=int(v*n_feat), act_on='feature', seed=seed) for v in f_feature]
+    # number of PowerSpectrum features in QUIP
+    n_feat = int((aa['max_angular']+1) * aa['max_radial']*len(global_species[name])*(aa['max_radial']*len(global_species[name])+1) /2)
+    feature_subselections[name] = [dict(Nselect=int(v*n_feat), act_on='feature') for v in f_feature]
 
 self_contributions = {
     'silicon_bulk' : {14: -158.54496821},
@@ -95,8 +120,10 @@ self_contributions = {
     'methane_sulfonic': {1: -0.6645519125911715, 6: -5.654232251386078, 8: -15.852522852103935, 16: -9.17258361289801}
 }
 
+grads_timings = [True, False]
+
 for name in names:
-    for model, sparse_point_subselection, feature_subselection in product(models[name], sparse_point_subselections[name], feature_subselections[name]):
+    for model, sparse_point_subselection, feature_subselection in product(models[name], sparse_point_subselections[name], feature_subselections[name]s):
         rep_args = deepcopy(model)
         rep_args['name'] = name
         rep_args['filename'] = join(STRUCTURE_PATH,fns[name])

@@ -1,5 +1,5 @@
 import os
-OMP_NUM_THREADS = 4
+OMP_NUM_THREADS = 12
 os.environ["OMP_NUM_THREADS"] = "{}".format(OMP_NUM_THREADS)
 
 # project.py
@@ -14,7 +14,7 @@ from time import sleep, ctime
 
 sys.path.insert(0, join(dirname(__file__), '../'))
 from path import STRUCTURE_PATH, RASCAL_BUILD_PATH, BUILD_PATH
-from utils.io import tojson, fromjson, fromfile, _decode
+from utils.io import tojson, fromjson, fromfile, _decode, topickle, frompickle
 from utils.model import KnmPool, train_gap_model
 from utils import Timer
 sys.path.insert(0, RASCAL_BUILD_PATH)
@@ -34,7 +34,7 @@ from tqdm import tqdm
 group = {
     'sparse_point_fn' : 'sparse_point.json',
     'feature_fn' : 'feature.json',
-    'knm_fn' : 'knm.npy',
+    'knm_fn' : 'knm.pck',
     'kernel_fn' : 'kernel.json',
     'model_fn' : 'model.json',
 }
@@ -62,6 +62,7 @@ def sparse_point_computed(job):
 @FlowProject.label
 def knm_computed(job):
     return job.isfile(group['knm_fn'])
+
 @FlowProject.label
 def model_computed(job):
     return job.isfile(group['model_fn'])
@@ -75,8 +76,9 @@ def compute_feature_selection(job):
     frames = fromfile(job.sp.filename)[st:st+lg]
     soap = SphericalInvariants(**sp['representation'])
     managers = soap.transform(frames)
-    compressor = CURFilter(soap, **sp['feature_subselection'])
-    feature_subselection = compressor.select_and_filter(managers)
+    compressor = FPSFilter(soap, **sp['feature_subselection'])
+    compressor.select(managers)
+    feature_subselection = compressor.filter(managers)
 
     tojson(job.fn(group['feature_fn']), feature_subselection)
 
@@ -89,7 +91,7 @@ def compute_sparse_point(job):
     frames = fromfile(job.sp.filename)[st:st+lg]
     soap = SphericalInvariants(**sp['representation'])
     managers = soap.transform(frames)
-    compressor = CURFilter(soap, **sp['sparse_point_subselection'])
+    compressor = FPSFilter(soap, **sp['sparse_point_subselection'])
     compressor.select(managers)
 
     feature_subselection = fromjson(job.fn(group['feature_fn']))
@@ -122,7 +124,7 @@ def compute_knm(job):
     zeta = job.sp['kernel']['zeta']
     res = pool.run(frames, zeta=zeta, sparse_points_fn=sp_fn, self_contributions=sp['self_contributions'])
 
-    np.save(job.fn(group['knm_fn']), res)
+    topickle(job.fn(group['knm_fn']), res)
 
 def extract_ref(frames,info_key='energy',array_key='forces'):
     y,f = [], []
@@ -156,7 +158,7 @@ def train_model_(job):
     soap = SphericalInvariants(**hypers)
     kernel = Kernel(soap, **job.sp['kernel'])
 
-    res = np.load(job.fn(group['knm_fn']), allow_pickle=True).tolist()
+    res = frompickle(job.fn(group['knm_fn']))
 
     if job.sp.train_with_grad:
         model = train_gap_model(kernel, X_pseudo, res['energy'],
