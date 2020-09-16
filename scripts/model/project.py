@@ -315,7 +315,7 @@ def compute_benchmark(job):
                 Y0 + np.dot(KNM, model.weights).reshape((-1))
             sleep(0.1)
             with timers['pred forces']:
-                rep = model.kernel._representation
+                rep = soap._representation
                 forces = compute_forces(rep, model.kernel._kernel, managers.managers, model.X_train._sparse_points, model.weights.reshape((1, -1)))
             sleep(0.1)
             managers, KNM = [], []

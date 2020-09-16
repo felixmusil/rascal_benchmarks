@@ -13,7 +13,7 @@ class Timer(object):
     def __exit__(self, type, value, traceback):
         self.end = timer()
         self.elapsed.append(self.end-self.start)
-        return True
+        
     def mean(self):
         return np.mean(self.elapsed)
     def stdev(self):
