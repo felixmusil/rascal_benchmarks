@@ -68,14 +68,16 @@ n_sparse = [100, 200, 500, 1000, 2000, 5000, 7000, 9000]
 def get_per_sp_sparsepoints(n_sparse, sparse_proportions):
     aa = np.zeros(np.max(list(sparse_proportions))+1,dtype=int)
     for sp,f in sparse_proportions.items():
-        aa[sp] = int(n_sparse*f)
+        val = int(n_sparse*f)
+        if val == 0:
+            val = 1
+        aa[sp] = val
 
     v = np.sum(aa)
     if v != n_sparse:
         diff = n_sparse-v
         bb = aa.copy()
-        bb[bb==0] = aa.max()
-        iaa = np.argmin(bb)
+        iaa = np.argmax(bb)
         aa[iaa] = aa[iaa]+diff
 
     Nselect = {sp:aa[sp] for sp,f in sparse_proportions.items()}
