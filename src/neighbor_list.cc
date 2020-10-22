@@ -88,7 +88,7 @@ int main(int argc, char * argv[]) {
   Timer timer{};
 
   // read the atomic structures
-  std::vector<AtomicStructure<3>> structures = get_structures(filename, start_structure, n_structures);
+  std::vector<AtomicStructure<3>> structures = get_structures(filename, n_structures, start_structure);
 
   for (int looper{0}; looper < N_ITERATIONS; looper++) {
     ManagerCollection_t managers{adaptors};
@@ -99,14 +99,17 @@ int main(int argc, char * argv[]) {
 
   ManagerCollection_t managers{adaptors};
   managers.add_structures(structures);
-  size_t n_neighbors{0}, n_centers{0};
+  std::vector<size_t> n_neighbors{}, n_centers{};
   for (auto manager : managers) {
+    size_t n_neighbor{0}, n_center{0};
     for (auto center : manager) {
-      n_centers++;
+      n_center++;
       for (auto neigh : center.pairs()) {
-        n_neighbors++;
+        n_neighbor++;
       }
     }
+    n_neighbors.push_back(n_neighbor);
+    n_centers.push_back(n_center);
   }
 
   std::cout << elapsed.mean() << ", "<<std_dev(elapsed) << std::endl;
