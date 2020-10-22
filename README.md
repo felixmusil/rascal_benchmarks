@@ -23,3 +23,5 @@ rsync -avzh cosmo3:/home/musil/git/rascal_benchmarks/scripts ./
 rsync -avzh --progress --max-size='10M' helvetios:/scratch/musil/rascal_benchmarks/scripts/* ./
 
 python driver.py --run -np 15 2>&1 | tee status.txt
+
+Sinteract -p build -c 4 -m 16G
