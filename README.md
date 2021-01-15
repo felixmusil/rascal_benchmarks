@@ -7,7 +7,7 @@ These benchmarks have been used to produce the results for the journal article `
 
 Here is the recipe to run the benchmarks from scratch:
 
-+ create a conda environment with the required packages running
++ create a conda environment with the required python packages running
 ```
 conda env create -f environment.yml
 ```
@@ -16,7 +16,7 @@ and to make the environement file run
 conda env export > environment.yml
 ```
 
-+ compile rascal (see https://github.com/cosmo-epfl/librascal for requirements) and the benchmark suite by running
++ compile rascal (see https://github.com/cosmo-epfl/librascal for c++ requirements) and the benchmark suite by running
 ```
 mkdir build
 cd build
