@@ -6,6 +6,8 @@ __pycache__/
 methane_liquid/sparse_points*
 results/*
 figures/*
+QM9
+methane_liquid
 # C extensions
 *.png
 *.so

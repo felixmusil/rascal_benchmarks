@@ -20,7 +20,6 @@ from rascal.representations import SphericalInvariants, SphericalExpansion
 from rascal.representations.spherical_invariants import get_power_spectrum_index_mapping
 from rascal.representations import SphericalInvariants
 from rascal.models import Kernel, train_gap_model, SparsePoints, KRR
-from rascal.models.krr import compute_forces
 from rascal.neighbourlist import AtomsList
 from rascal.utils import from_dict, CURFilter, fps, to_dict
 from rascal.utils.random_filter import RandomFilter
@@ -266,6 +265,7 @@ def train_model(job):
 @FlowProject.pre.after(train_model)
 @FlowProject.post(benchmark_computed)
 def compute_benchmark(job):
+    from rascal.models.krr import compute_sparse_kernel_gradients
     sp = _decode(job.statepoint())
     st,lg = job.sp.start_structure, job.sp.n_structures
     frames = fromfile(job.sp.filename)[st:st+lg]
@@ -315,8 +315,8 @@ def compute_benchmark(job):
                 Y0 + np.dot(KNM, model.weights).reshape((-1))
             sleep(0.1)
             with timers['pred forces']:
-                rep = model.kernel._representation
-                forces = compute_forces(rep, model.kernel._kernel, managers.managers, model.X_train._sparse_points, model.weights.reshape((1, -1)))
+                rep = soap._representation
+                forces = -compute_sparse_kernel_gradients(rep, model.kernel._kernel, managers.managers, model.X_train._sparse_points, model.weights.reshape((1, -1)))
             sleep(0.1)
             managers, KNM = [], []
             del managers, KNM

@@ -64,13 +64,37 @@ global_species = {
 }
 
 n_sparse = [100, 200, 500, 1000, 2000, 5000, 7000, 9000]
-sparse_point_subselections = {
-    'qm9' : [dict(Nselect={1:int(v/5),6:int(v/5),7:int(v/5),8:int(v/5),9:int(v/5)}, act_on='sample per species', seed=seed) for v in n_sparse],
-    'molecular_crystals' : [dict(Nselect={1:int(v/4),6:int(v/4),7:int(v/4),8:int(v/4)}, act_on='sample per species', seed=seed) for v in n_sparse],
-    'silicon_bulk' : [dict(Nselect={14:v}, act_on='sample per species', seed=seed) for v in n_sparse],
-    'methane_liquid' : [dict(Nselect={1:int(v/2),6:int(v/2)}, act_on='sample per species', seed=seed) for v in n_sparse],
-    'methane_sulfonic' : [dict(Nselect={1:int(v/4),6:int(v/4),8:int(v/4),16:int(v/4)}, act_on='sample per species', seed=seed) for v in n_sparse],
+
+def get_per_sp_sparsepoints(n_sparse, sparse_proportions):
+    aa = np.zeros(np.max(list(sparse_proportions))+1,dtype=int)
+    for sp,f in sparse_proportions.items():
+        val = int(n_sparse*f)
+        if val == 0:
+            val = 1
+        aa[sp] = val
+
+    v = np.sum(aa)
+    if v != n_sparse:
+        diff = n_sparse-v
+        bb = aa.copy()
+        iaa = np.argmax(bb)
+        aa[iaa] = aa[iaa]+diff
+
+    Nselect = {sp:aa[sp] for sp,f in sparse_proportions.items()}
+    return Nselect
+
+## these numbers correspond to the numbers of atoms of a certain type in the
+# structure so they depend on the exact number of structures in misc_entries
+sparse_proportions = {
+    'silicon_bulk': {14: 1.0},
+    'methane_liquid': {1: 0.8, 6: 0.2},
+    'methane_sulfonic': {1: 0.4637329719706155, 6: 0.43149561372227374, 8: 0.10120533485486057, 16: 0.0035660794522501963},
+    'molecular_crystals': {1: 0.46361619098630347, 6: 0.41808860662636776, 7: 0.043997245389853855, 8: 0.07429795699747493},
+    'qm9': {1: 0.5121376057705646, 6: 0.35053405465390486, 7: 0.05562491330281592, 8: 0.07948397836038286, 9: 0.0022194479123318076}
 }
+sparse_point_subselections = {}
+for name in names:
+    sparse_point_subselections[name] = [dict(Nselect=get_per_sp_sparsepoints(v, sparse_proportions[name]), act_on='sample per species', seed=seed) for v in n_sparse]
 
 models = {
     'silicon_bulk' : [
