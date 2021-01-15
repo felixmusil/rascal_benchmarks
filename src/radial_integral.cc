@@ -279,19 +279,21 @@ int main(int argc, char * argv[]) {
   math::Vector_t elapsed{N_ITERATIONS};
 
   // compute NL
-  ManagerCollection_t managers{adaptors};
-  managers.add_structures(filename, start_structure, n_structures);
   RadialIntegral radial_integral{calculator};
   Timer timer{};
   // This is the part that should get profiled
   for (int looper{0}; looper < N_ITERATIONS; looper++) {
+    ManagerCollection_t managers{adaptors};
+    managers.add_structures(filename, start_structure, n_structures);
     timer.reset();
     for (auto manager : managers) {
       radial_integral.compute(manager);
     }
     elapsed[looper] = timer.elapsed();
   }
-
+  
+  ManagerCollection_t managers{adaptors};
+  managers.add_structures(filename, start_structure, n_structures);
   size_t n_neighbors{0}, n_centers{0};
   for (auto manager : managers) {
     for (auto center : manager) {

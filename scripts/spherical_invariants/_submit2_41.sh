@@ -4,9 +4,9 @@
 #SBATCH --ntasks 1
 #SBATCH --cpus-per-task 6
 #SBATCH --mem 188000
-#SBATCH --time 12:00:00
+#SBATCH --time 14:00:00
 
 
 conda activate rascal_benchmark
 
-python project.py run -f name methane_liquid --parallel 3  --order random  2>&1 | tee status_3.txt
+python project.py run -f '{"name": "methane_sulfonic", "representation.radial_basis": "DVR"}'  --parallel 5 --progress --order random  2>&1 | tee status_41.txt

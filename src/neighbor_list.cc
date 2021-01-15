@@ -13,6 +13,7 @@
 #include "rascal/utils/basic_types.hh"
 #include "rascal/utils/utils.hh"
 #include "rascal/representations/calculator_sorted_coulomb.hh"
+#include "rascal/representations/calculator_spherical_expansion.hh"
 #include "rascal/representations/calculator_spherical_invariants.hh"
 #include "rascal/structure_managers/adaptor_center_contribution.hh"
 #include "rascal/structure_managers/adaptor_half_neighbour_list.hh"
@@ -39,18 +40,27 @@
 
 using namespace rascal;  // NOLINT
 
-using ManagerTypeHolder_t = StructureManagerTypeHolder<
-                      StructureManagerCenters, AdaptorNeighbourList,
-                      AdaptorHalfList,
+using ManagerCollection_t = ManagerCollection<StructureManagerCenters,
+                          AdaptorNeighbourList,
                           AdaptorCenterContribution, AdaptorStrict>;
 
-using Manager_t = typename ManagerTypeHolder_t::type;
-using Representation_t = CalculatorSphericalInvariants;
-using ManagerCollection_t =
-    typename TypeHolderInjector<ManagerCollection, ManagerTypeHolder_t::type_list>::type;
-using Prop_t = typename Representation_t::template Property_t<Manager_t>;
-using PropGrad_t = typename Representation_t::template PropertyGradient_t<Manager_t>;
 
+std::vector<AtomicStructure<3>> get_structures(std::string filename, int length, int start) {
+  json structures = json_io::load(filename);
+
+  auto ids{structures["ids"].get<std::vector<int>>()};
+  std::sort(ids.begin(), ids.end());
+  ids.erase(ids.begin(), ids.begin() + start);
+  if (length == -1) {
+    length = ids.size();
+  }
+  ids.erase(ids.begin() + length, ids.end());
+  std::vector<AtomicStructure<3>> structs{};
+  for (auto & idx : ids) {
+    structs.push_back(structures[std::to_string(idx)].get<AtomicStructure<3>>());
+  }
+  return structs;
+}
 
 int main(int argc, char * argv[]) {
   if (argc < 3) {
@@ -71,34 +81,35 @@ int main(int argc, char * argv[]) {
   const int n_structures = input["n_structures"].get<int>();
   const int start_structure = input["start_structure"].get<int>();
   json adaptors = input["adaptors"].get<json>();
-  json calculator = input["calculator"].get<json>();
 
   std::cout << "Config filename: " << filename << std::endl;
 
   math::Vector_t elapsed{N_ITERATIONS};
   Timer timer{};
 
-  Representation_t spherical_invariants{calculator};
-  // This is the part that should get profiled
+  // read the atomic structures
+  std::vector<AtomicStructure<3>> structures = get_structures(filename, n_structures, start_structure);
+
   for (int looper{0}; looper < N_ITERATIONS; looper++) {
     ManagerCollection_t managers{adaptors};
-    managers.add_structures(filename, start_structure, n_structures);
     timer.reset();
-    for (auto manager : managers) {
-      spherical_invariants.compute(manager);
-    }
+    managers.add_structures(structures);
     elapsed[looper] = timer.elapsed();
   }
+
   ManagerCollection_t managers{adaptors};
-  managers.add_structures(filename, start_structure, n_structures);
-  size_t n_neighbors{0}, n_centers{0};
+  managers.add_structures(structures);
+  std::vector<size_t> n_neighbors{}, n_centers{};
   for (auto manager : managers) {
+    size_t n_neighbor{0}, n_center{0};
     for (auto center : manager) {
-      n_centers++;
+      n_center++;
       for (auto neigh : center.pairs()) {
-        n_neighbors++;
+        n_neighbor++;
       }
     }
+    n_neighbors.push_back(n_neighbor);
+    n_centers.push_back(n_center);
   }
 
   std::cout << elapsed.mean() << ", "<<std_dev(elapsed) << std::endl;
