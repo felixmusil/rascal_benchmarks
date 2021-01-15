@@ -77,17 +77,29 @@ int main(int argc, char * argv[]) {
   math::Vector_t elapsed{N_ITERATIONS};
   Timer timer{};
 
+  math::Vector_t elapsed_se{N_ITERATIONS};
+  Timer timer_se{};
+
   Representation_t spherical_invariants{calculator};
+  CalculatorSphericalExpansion spherical_expansion{calculator};
   // This is the part that should get profiled
   for (int looper{0}; looper < N_ITERATIONS; looper++) {
     ManagerCollection_t managers{adaptors};
     managers.add_structures(filename, start_structure, n_structures);
+    // timing for spherical expansion
+    timer_se.reset();
+    for (auto manager : managers) {
+      spherical_expansion.compute(manager);
+    }
+    elapsed_se[looper] = timer_se.elapsed();
+    // timing for spherical invariant
     timer.reset();
     for (auto manager : managers) {
       spherical_invariants.compute(manager);
     }
     elapsed[looper] = timer.elapsed();
   }
+
   ManagerCollection_t managers{adaptors};
   managers.add_structures(filename, start_structure, n_structures);
   size_t n_neighbors{0}, n_centers{0};
@@ -104,6 +116,8 @@ int main(int argc, char * argv[]) {
   json results{};
   results["elapsed_mean"] = elapsed.mean();
   results["elapsed_std"] = std_dev(elapsed);
+  results["elapsed_mean_se"] = elapsed_se.mean();
+  results["elapsed_std_se"] = std_dev(elapsed_se);
   results["time_unit"] = "seconds";
   results["n_neighbors"] = n_neighbors;
   results["n_centers"] = n_centers;
