@@ -32,15 +32,24 @@ The whole suite of benchmarks can be run with
 cd ../scripts/
 python driver.py --init --run -np 4 2>&1 | tee status.txt
 ```
-
-
+or on a slurm compatible HPC
+```
+cd ../scripts/
+python driver.py --init --submit
+```
+where the provided `submit_*.sh` where used on the helvetios@EPFL.
 
 ## Datasets
 
 The datasets have been extracted from various published articles (see `structures/raw_data/README.md` for more details) and are stored in a custom `.json` format compatible with `ASE` and `rascal` reader. These files have been produced with the `convert_structure` notebook.
 
 
+## Notebooks
 
+Some analysis of the benchmarks results have been done with the `model_predition_timings` and `query4plot_structure2rep` notebooks. The silicon MLIPs used to predict structural properties have been developed in the `MLIP_Si-prop` notebook.
+
+
+## some useful commands to work remotely
 
 rsync -avzh cosmo3:/home/musil/git/rascal_benchmarks/scripts ./
 
