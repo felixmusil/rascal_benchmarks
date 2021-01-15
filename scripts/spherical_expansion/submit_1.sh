@@ -4,7 +4,7 @@
 #SBATCH --ntasks 1
 #SBATCH --cpus-per-task 5
 #SBATCH --mem 180000
-#SBATCH --time 48:00:00
+#SBATCH --time 12:00:00
 
 
 conda activate rascal_benchmark

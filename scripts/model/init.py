@@ -64,13 +64,37 @@ global_species = {
 }
 
 n_sparse = [100, 200, 500, 1000, 2000, 5000, 7000, 9000]
-sparse_point_subselections = {
-    'qm9' : [dict(Nselect={1:int(v/5),6:int(v/5),7:int(v/5),8:int(v/5),9:int(v/5)}, act_on='sample per species', seed=seed) for v in n_sparse],
-    'molecular_crystals' : [dict(Nselect={1:int(v/4),6:int(v/4),7:int(v/4),8:int(v/4)}, act_on='sample per species', seed=seed) for v in n_sparse],
-    'silicon_bulk' : [dict(Nselect={14:v}, act_on='sample per species', seed=seed) for v in n_sparse],
-    'methane_liquid' : [dict(Nselect={1:int(v/2),6:int(v/2)}, act_on='sample per species', seed=seed) for v in n_sparse],
-    'methane_sulfonic' : [dict(Nselect={1:int(v/4),6:int(v/4),8:int(v/4),16:int(v/4)}, act_on='sample per species', seed=seed) for v in n_sparse],
+
+def get_per_sp_sparsepoints(n_sparse, sparse_proportions):
+    aa = np.zeros(np.max(list(sparse_proportions))+1,dtype=int)
+    for sp,f in sparse_proportions.items():
+        val = int(n_sparse*f)
+        if val == 0:
+            val = 1
+        aa[sp] = val
+
+    v = np.sum(aa)
+    if v != n_sparse:
+        diff = n_sparse-v
+        bb = aa.copy()
+        iaa = np.argmax(bb)
+        aa[iaa] = aa[iaa]+diff
+
+    Nselect = {sp:aa[sp] for sp,f in sparse_proportions.items()}
+    return Nselect
+
+## these numbers correspond to the numbers of atoms of a certain type in the
+# structure so they depend on the exact number of structures in misc_entries
+sparse_proportions = {
+    'silicon_bulk': {14: 1.0},
+    'methane_liquid': {1: 0.8, 6: 0.2},
+    'methane_sulfonic': {1: 0.4637329719706155, 6: 0.43149561372227374, 8: 0.10120533485486057, 16: 0.0035660794522501963},
+    'molecular_crystals': {1: 0.46361619098630347, 6: 0.41808860662636776, 7: 0.043997245389853855, 8: 0.07429795699747493},
+    'qm9': {1: 0.5121376057705646, 6: 0.35053405465390486, 7: 0.05562491330281592, 8: 0.07948397836038286, 9: 0.0022194479123318076}
 }
+sparse_point_subselections = {}
+for name in names:
+    sparse_point_subselections[name] = [dict(Nselect=get_per_sp_sparsepoints(v, sparse_proportions[name]), act_on='sample per species', seed=seed) for v in n_sparse]
 
 models = {
     'silicon_bulk' : [
@@ -103,7 +127,7 @@ models = {
         {
          'representation' :
             dict(
-            interaction_cutoff=5., cutoff_smooth_width=.5,
+            interaction_cutoff=5., cutoff_smooth_width=1.,
             max_radial=12, max_angular=9, gaussian_sigma_type="Constant",
             soap_type="PowerSpectrum",
             normalize=True,
@@ -129,7 +153,7 @@ models = {
         {
          'representation' :
             dict(
-            interaction_cutoff=5., cutoff_smooth_width=.5,
+            interaction_cutoff=5., cutoff_smooth_width=1.,
             max_radial=9, max_angular=9, gaussian_sigma_type="Constant",
             soap_type="PowerSpectrum",
             normalize=True,
@@ -155,7 +179,7 @@ models = {
         {
          'representation' :
             dict(
-            interaction_cutoff=4, cutoff_smooth_width=.5,
+            interaction_cutoff=5, cutoff_smooth_width=1.,
             max_radial=8, max_angular=6, gaussian_sigma_type="Constant",
             soap_type="PowerSpectrum",
             normalize=True,
@@ -181,7 +205,7 @@ models = {
         {
          'representation' :
             dict(
-            interaction_cutoff=4., cutoff_smooth_width=.5,
+            interaction_cutoff=5., cutoff_smooth_width=1.,
             max_radial=8, max_angular=6, gaussian_sigma_type="Constant",
             soap_type="PowerSpectrum",
             normalize=True,
@@ -205,12 +229,12 @@ models = {
     ],
 }
 
-f_feature = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 0.7]
+f_feature = [0.02, 0.05, 0.1, 0.2,0.4, 0.5, 0.7, 1]
 feature_subselections = {}
 for name,dd in models.items():
     aa = dd[0]['representation']
-    # number of PowerSpectrum features
-    n_feat = int(aa['max_radial']**2 * (aa['max_angular']+1) * len(global_species[name])*(len(global_species[name])+1) /2)
+    # number of PowerSpectrum features in QUIP
+    n_feat = int((aa['max_angular']+1) * aa['max_radial']*len(global_species[name])*(aa['max_radial']*len(global_species[name])+1) /2)
     feature_subselections[name] = [dict(Nselect=int(v*n_feat), act_on='feature', seed=seed) for v in f_feature]+[dict(Nselect=None, act_on='feature', seed=seed)]
 
 self_contributions = {
@@ -221,13 +245,16 @@ self_contributions = {
     'methane_sulfonic': {1: -0.6645519125911715, 6: -5.654232251386078, 8: -15.852522852103935, 16: -9.17258361289801}
 }
 
+grads_timings = [True, False]
+
 for name in names:
-    for model, sparse_point_subselection, feature_subselection in product(models[name], sparse_point_subselections[name], feature_subselections[name]):
+    for model, sparse_point_subselection, feature_subselection, grads_timing in product(models[name], sparse_point_subselections[name], feature_subselections[name], grads_timings):
         rep_args = deepcopy(model)
         rep_args['name'] = name
         rep_args['filename'] = join(STRUCTURE_PATH,fns[name])
         rep_args['self_contributions'] = self_contributions[name]
         rep_args['train_with_grad'] = False
+        rep_args['grads_timing'] = grads_timing
         rep_args['sparse_point_subselection'] = sparse_point_subselection
         rep_args['feature_subselection'] = feature_subselection
         rep_args.update(misc_entries[name])
