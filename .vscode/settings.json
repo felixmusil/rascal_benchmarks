@@ -66,6 +66,5 @@
     "string": "cpp",
     "variant": "cpp"
   },
-  "python.pythonPath": "/home/musil/miniconda/envs/rascal_benchmark/bin/python",
   "cmake.configureOnOpen": false
 }
