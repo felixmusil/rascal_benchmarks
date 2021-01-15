@@ -1,6 +1,7 @@
 # rascal_benchmarks
 
 Set of benchmarks of the rascal library relying on the signac library to run and analyse the results.
+These benchmarks have been used to produce the results for the journal article `to be inserted`.
 
 ## Installation
 
