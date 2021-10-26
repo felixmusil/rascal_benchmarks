@@ -2,7 +2,9 @@ rascal_benchmarks
 -----------------
 
 Set of benchmarks of the rascal library relying on the signac library to run and analyse the results.
-These benchmarks have been used to produce the results for the journal article [Efficient implementation of atom-density representations. J. Chem. Phys. **154**, 114109 (2021)](https://doi.org/10.1063/5.0044689).
+These benchmarks have been used to produce the results for the journal article [Efficient implementation of atom-density representations. J. Chem. Phys. **154**, 114109 (2021)](https://doi.org/10.1063/5.0044689). The version of the code used in the article is available here [![DOI](https://zenodo.org/badge/265284109.svg)](https://zenodo.org/badge/latestdoi/265284109)
+
+
 
 Installation
 ============
